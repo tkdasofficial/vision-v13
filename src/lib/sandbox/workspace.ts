@@ -217,14 +217,14 @@ async function purgeJob(db: Db, userId: string, jobId: string) {
 /** Claims one task (CAS) and purges its job. Failure leaves it 'failed' so the scheduled sweep retries. */
 async function runTask(db: Db, task: { cleanup_id: string; job_id: string; user_id: string }, now: number) {
   const claimed = await db("UPDATE cleanup_tasks SET cleanup_status = 'running', started_at = ? WHERE cleanup_id = ? AND cleanup_status IN ('pending','failed') RETURNING cleanup_id", [now, task.cleanup_id]);
-  if (!claimed.length) return false;
+  if (!claimed.length) return "lost" as const;
   try {
     await purgeJob(db, task.user_id, task.job_id);
     await db("UPDATE cleanup_tasks SET cleanup_status = 'completed', completed_at = ?, last_error = NULL WHERE cleanup_id = ?", [Date.now(), task.cleanup_id]);
-    return true;
+    return "done" as const;
   } catch (e) {
     await db("UPDATE cleanup_tasks SET cleanup_status = 'failed', retry_count = retry_count + 1, last_error = ? WHERE cleanup_id = ?", [String((e as Error)?.message ?? e).slice(0, 300), task.cleanup_id]);
-    return false;
+    return "error" as const;
   }
 }
 
@@ -244,13 +244,14 @@ export async function cleanupNow(db: Db, userId: string, jobId: string, verifyPe
   const task = (await db("SELECT cleanup_id, job_id, user_id, cleanup_status FROM cleanup_tasks WHERE job_id = ? AND user_id = ?", [jobId, userId]))[0];
   if (!task) return "skipped";
   if (task.cleanup_status === "completed" || task.cleanup_status === "running") return "already";
-  return (await runTask(db, task, now)) ? "cleaned" : "failed";
+  const r = await runTask(db, task, now);
+  return r === "done" ? "cleaned" : r === "lost" ? "already" : "failed";
 }
 
 /** Fallback sweep for abandoned, failed, stuck or previously failed cleanups. Job-by-job, never chat history. */
 export async function runCleanup(db: Db, now = Date.now(), limit = 20) {
   const due = await db("SELECT cleanup_id, job_id, user_id, retry_count FROM cleanup_tasks WHERE cleanup_status IN ('pending','failed') AND scheduled_at <= ? AND retry_count < 5 ORDER BY scheduled_at LIMIT ?", [now, limit]);
   let done = 0;
-  for (const task of due) if (await runTask(db, task, now)) done++;
+  for (const task of due) if ((await runTask(db, task, now)) === "done") done++;
   return done;
 }
