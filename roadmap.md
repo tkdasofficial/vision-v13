@@ -1,5 +1,11 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — AI response upgrade
+- [ ] Fix the source of duplicated story sections without deleting saved history.
+- [ ] Share readable headings, emphasis, spacing and lists across replies and Markdown copy blocks.
+- [ ] Automatically frame reusable sections while preserving code, tables, charts and explicit formatting.
+- [ ] Run focused regressions and verify the updated reply display; report live verification limits.
+
 ## Current request — Reduce unnecessary prompt-generation latency
 - [x] Inspect queue configuration, polling, retries and resumable database work; targeted baseline: 81 tests passed.
 - [x] Remove duplicate polling and redundant owner-slot reads without changing generation settings or safety waits; accepted-scene stage writes also skipped.
