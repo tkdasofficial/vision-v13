@@ -7,6 +7,15 @@ import { classifyTask } from "@/lib/ai/task-router";
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("Markdown writing copy boxes", () => {
+  it("copies an automatically detected dialogue without scene labels or surrounding explanation", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    render(<MarkdownReply>{"## Scene 1\n\n### Dialogue\nMira: Keep the **lamp** lit.\n\n## Notes\nThe boat reaches shore."}</MarkdownReply>);
+    const box = screen.getByRole("region", { name: "Markdown copy box" });
+    fireEvent.click(within(box).getByRole("button", { name: "Copy Markdown" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Mira: Keep the lamp lit."));
+    expect(box).not.toHaveTextContent("The boat reaches shore.");
+  });
   it("keeps explanations outside one prompt box and copies only the prompt", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
