@@ -1,6 +1,6 @@
 // Pure contract and assembly logic for Cloudflare-native story/prompt generation.
 // No I/O — shared by the server runner and tests.
-import { requestedStoryFields, storyDialogueRange, spokenStoryWords, requiresFixedStoryBackground } from "../ai/story-output";
+import { requestedStoryFields, storyDialogueRange, spokenStoryWords, requiresFixedStoryBackground, wantsStoryProse } from "../ai/story-output";
 import { validateRuntimeStory } from "./story-validation";
 import { SLOT_LIMITS } from "../sandbox/slots";
 
@@ -84,16 +84,16 @@ export function checkStory(text: string): string[] {
   if (/^\s*#{1,6}\s*(scene|visual prompt|dialogue)\b/im.test(text) || /^\s*\**\s*scene\s+\d+\b/im.test(text)) {
     issues.push("The story must be prose without scene headings or scene labels.");
   }
-  if (/^\s*(#{1,6}\s*)?(visual prompt|dialogue)\s*:?\s*$/im.test(text)) issues.push("The story must not contain Visual Prompt or Dialogue sections.");
+  if (/^\s*(?:#{1,6}\s*)?[*_]*(?:visual prompt|dialogue)[*_]*\s*(?::|$)/im.test(text)) issues.push("The story must not contain Visual Prompt or Dialogue sections.");
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   if (words < 250) issues.push(`The story is too short (${words} words); write at least 250 words.`);
   return issues;
 }
 
-export function assembleStoryDocument(input: { title?: string; story: string; scenes: string[] }): string {
+export function assembleStoryDocument(input: { title?: string; story: string; scenes: string[]; prompt?: string }): string {
   const parts: string[] = [];
   parts.push(`# ${input.title?.trim() || "Generated Story"}`);
-  if (input.story.trim()) parts.push(`## Story\n\n${input.story.trim()}`);
+  if (input.story.trim() && (!input.prompt || wantsStoryProse(input.prompt))) parts.push(`## Story\n\n${input.story.trim()}`);
   for (const scene of input.scenes) {
     const text = scene.trim();
     if (text) parts.push(text);

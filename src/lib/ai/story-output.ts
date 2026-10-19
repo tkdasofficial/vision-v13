@@ -26,6 +26,14 @@ export function requestedStoryFields(prompt: string): string[] {
 }
 
 /** Only request instructions can opt into a downloadable story. */
+export function wantsStoryProse(prompt: string): boolean {
+  const request = extractSource(prompt)?.request ?? prompt;
+  if (!requestedStoryFields(prompt).length) return true;
+  return /\b(?:full|complete|entire|standalone)\s+story\b|\bstory\s+(?:prose|narrative|text)\b/i.test(request)
+    && !/\b(?:no|without|do not (?:give|include|provide))\s+(?:the\s+)?(?:full|complete|entire|standalone)?\s*story\b/i.test(request);
+}
+
+/** Only request instructions can opt into a downloadable story. */
 export function wantsStoryFile(prompt: string): boolean {
   const request = (extractSource(prompt)?.request ?? prompt).split("<<<SOURCE")[0];
   const directives = request.split(/[.!?;\n]|\bbut\b/i).filter((clause) => /\b(?:file|download|attachment|export|save\s+as)\b/i.test(clause));

@@ -66,6 +66,16 @@ describe("scoreScene", () => {
 });
 
 describe("assembleStoryDocument", () => {
+  it("omits the internal story for the requested visual and dialogue pair", () => {
+    const doc = assembleStoryDocument({ story: "Internal narrative.", scenes: [sceneWith(27)], prompt: "Create a story of 1 scene and give me both visual prompt & dialogue." });
+    expect(doc).not.toContain("Internal narrative.");
+    expect(doc.match(/### Visual Prompt/g)).toHaveLength(1);
+    expect(doc.match(/### Dialogue/g)).toHaveLength(1);
+  });
+  it("preserves separately requested full story prose", () => {
+    const doc = assembleStoryDocument({ story: "Requested narrative.", scenes: [sceneWith(27)], prompt: HORROR });
+    expect(doc).toContain("Requested narrative.");
+  });
   it("delivers story then scenes in order, never the blueprint", () => {
     const scenes = Array.from({ length: 5 }, (_, i) => sceneWith(26, i + 1));
     const doc = assembleStoryDocument({ story: "A long horror story body.", scenes });
@@ -84,6 +94,9 @@ describe("checkStory", () => {
   const prose = "The fog rolled over the manor while Evelyn waited. ".repeat(30);
   it("accepts continuous prose of at least 250 words", () => {
     expect(checkStory(prose)).toEqual([]);
+  });
+  it.each(["**Visual Prompt:** A cabin.", "**Dialogue:** MARA: Keep close.", "Visual Prompt: A cabin.", "### Dialogue\nMARA: Keep close."])("blocks inline and emphasized leaked components: %s", (leak) => {
+    expect(checkStory(`${prose}\n\n${leak}`)).toContain("The story must not contain Visual Prompt or Dialogue sections.");
   });
   it("rejects a story written as scene prompts", () => {
     expect(checkStory(`## Scene 1\n\n### Visual Prompt\nA hall.\n\n### Dialogue\nEVELYN: hello\n\n${prose}`).length).toBeGreaterThan(0);

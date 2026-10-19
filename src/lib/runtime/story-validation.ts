@@ -9,6 +9,9 @@ export function validateRuntimeStory(text: string, prompt: string): string[] {
   const matches = Array.from(body.matchAll(/^\s*#{0,3}\s*Scene\s+(\d+)\b[^\n]*\n/gim));
   const expected = /\b(\d+)\s+scenes?\b/i.exec(prompt)?.[1];
   const issues: string[] = [];
+  const preamble = body.slice(0, matches[0]?.index ?? body.length);
+  if (/^\s*(?:#{1,6}\s*)?[*_]*(?:visual prompt|dialogue)[*_]*\s*(?::|$)/im.test(preamble))
+    issues.push("Scene components were repeated outside the numbered scenes.");
   if (expected && (matches.length !== Number(expected) || matches.some((m, i) => Number(m[1]) !== i + 1)))
     issues.push(`Expected exactly ${expected} ordered scenes.`);
   const names: Record<string, string> = { action: "story line", visual: "visual prompt", dialogue: "dialogue", environment: "environment", camera: "camera direction" };
@@ -17,6 +20,9 @@ export function validateRuntimeStory(text: string, prompt: string): string[] {
     const scene = body.slice(start + match[0].length, matches[i + 1]?.index ?? body.length);
     const sections = Array.from(scene.matchAll(/^\s*#{2,3}\s+([^\n]+)\n([\s\S]*?)(?=^\s*#{2,3}\s|(?![\s\S]))/gm));
     const headings = sections.map((m) => m[1].trim().toLowerCase());
+    for (const heading of new Set(headings)) {
+      if (headings.filter((h) => h === heading).length > 1) issues.push(`Scene ${match[1]} repeats ${heading}.`);
+    }
     for (const field of requested) if (!headings.includes(names[field])) issues.push(`Scene ${match[1]} is missing ${names[field]}.`);
     if (requested.length && headings.some((h) => !requested.some((field) => names[field] === h)))
       issues.push(`Scene ${match[1]} contains unrequested sections.`);
