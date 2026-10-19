@@ -154,7 +154,7 @@ export async function closeStoryWorkspace(userId: string, runtimeJobId: string, 
 
 /** True when the job's assistant reply is saved, non-empty, in a chat owned by the user (main D1). */
 export async function replyPersisted(userId: string, runtimeJobId: string): Promise<boolean> {
-  const { d1 } = await import("@/lib/cloud/db.server");
+  const { d1 } = await import("@/lib/cloud/d1.server");
   const rows = await d1<any>(
     "SELECT 1 AS ok FROM chat_messages m JOIN chat_sessions s ON s.id = m.session_id WHERE m.id = ? AND s.user_id = ? AND m.role = 'assistant' AND TRIM(m.content) <> '' LIMIT 1",
     [`job-${runtimeJobId}`, userId],
