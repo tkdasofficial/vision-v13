@@ -1,5 +1,12 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — AI response upgrade
+- [x] Fix internal-story delivery leakage and reject bold/inline leaked or repeated scene components; saved history untouched.
+- [x] Shared reading styles for normal replies, Markdown copy blocks and expanded view; desktop/mobile screenshots inspected.
+- [x] Label-bound automatic story/prompt/dialogue/chart-spec copy blocks; existing code/text fences and independent tables unchanged; AI instructions preserve explicit format overrides.
+- [x] Full suite: 1,620 passed, one skipped; build OK. Browser fixture: three independent boxes, heading sizes 27/21.75/18px, no overflow or page errors; this is display verification, not authenticated live AI verification.
+- [ ] Deploy and verify a fresh authenticated generation — not requested this turn; deployed Cloudflare still uses the previous version.
+
 ## Current request — Reduce unnecessary prompt-generation latency
 - [x] Inspect queue configuration, polling, retries and resumable database work; targeted baseline: 81 tests passed.
 - [x] Remove duplicate polling and redundant owner-slot reads without changing generation settings or safety waits; accepted-scene stage writes also skipped.

@@ -5,6 +5,12 @@ const prompt = "Create a story of 10 scenes, each scene have 25 to 30 words dial
 const output = (words = 27) => Array.from({ length: 10 }, (_, i) => `Scene ${i + 1}: Homework\n\n\`\`\`\`markdown\n## Visual Prompt\nMonkey and Rabbit work in the classroom.\n\`\`\`\`\n\n\`\`\`\`markdown\n## Dialogue\nMonkey (quietly): ${"homework ".repeat(words)}\n\`\`\`\``).join("\n\n");
 
 describe("runtime story acceptance", () => {
+  it("rejects components leaked before numbered scenes", () => {
+    expect(validateRuntimeStory("## Story\n\n**Visual Prompt:** Unnumbered scene.\n\n" + output(), prompt)).toContain("Scene components were repeated outside the numbered scenes.");
+  });
+  it.each(["Visual Prompt", "Dialogue"])("rejects repeated %s within a scene", (heading) => {
+    expect(validateRuntimeStory(output() + `\n## ${heading}\nRepeated component.`, prompt)).toContain(`Scene 10 repeats ${heading.toLowerCase()}.`);
+  });
   it("accepts exactly ten scenes with the requested two components and 27 spoken words", () => {
     expect(validateRuntimeStory(output(), prompt)).toEqual([]);
   });

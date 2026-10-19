@@ -294,7 +294,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
 
   // Assemble in order and run the whole-document contract check before delivery.
   await setStage(jobId, "assembling");
-  const doc = assembleStoryDocument({ story, scenes });
+  const doc = assembleStoryDocument({ story, scenes, prompt });
   const issues = validateAssembled(doc, prompt);
   await w.finalValidation(issues);
   if (issues.length) {

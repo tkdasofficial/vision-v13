@@ -11,6 +11,7 @@ import CopyReadyBox from "@/components/chat/markdown";
 import TableReply from "@/components/chat/table";
 import { Callout, FlowDiagram, remarkCallouts, CALLOUT_TYPES, type CalloutType } from "@/components/chat/rich-blocks";
 import { dedupeDeliverables } from "@/lib/markdown-plain";
+import { autoCopySections } from "@/lib/ai/response-format";
 
 // "markdown" fences are copy-ready deliverables (rendered); text/prompt/untagged fences stay literal.
 const rawLanguages = new Set(["", "text", "txt", "plain", "plaintext", "prompt"]);
@@ -44,8 +45,8 @@ const components: Components = {
 };
 
 export default function MarkdownReply({ children }: { children: string }) {
-  const source = useMemo(() => normalizeMath(dedupeDeliverables(children)), [children]);
+  const source = useMemo(() => normalizeMath(dedupeDeliverables(autoCopySections(children))), [children]);
   // Scoped AI Elements exception: Streamdown drops TableReply's nested row children
   // (table-generation and currency regressions). Keep the source-position-aware renderer.
-  return <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkCallouts]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: "ignore", output: "htmlAndMathml" }]]} components={{ ...components, table: ({ children: tableChildren, node }) => <TableReply node={node} markdown={source.slice(node?.position?.start.offset ?? 0, node?.position?.end.offset ?? source.length)}>{tableChildren}</TableReply> }}>{source}</ReactMarkdown>;
+  return <div className="reply-markdown"><ReactMarkdown remarkPlugins={[remarkGfm, remarkMath, remarkCallouts]} rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: "ignore", output: "htmlAndMathml" }]]} components={{ ...components, table: ({ children: tableChildren, node }) => <TableReply node={node} markdown={source.slice(node?.position?.start.offset ?? 0, node?.position?.end.offset ?? source.length)}>{tableChildren}</TableReply> }}>{source}</ReactMarkdown></div>;
 }
