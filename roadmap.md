@@ -5,7 +5,7 @@
 - [x] Remove duplicate polling and redundant owner-slot reads without changing generation settings or safety waits; accepted-scene stage writes also skipped.
 - [x] Targeted timing, retry, resume, isolation, validation, permanent reply and cleanup regressions pass (84 tests); full post-change comparison recorded in docs/generation-latency-review-2026-10-19.md.
 - [x] Deploy backend on explicit request after 1,604 passing tests — version ada17d4b-8269-4f88-9192-899c28e4ecbd; deployed health HTTP 200.
-- [ ] Repeat the same-account five-scene test and measure time against the historical 14m36s — blocked on usable account session; fresh browser redirects to login, and old password must not be reused.
+- [x] Repeat exact same-account Mira/Pip five-scene prompt in saved chat mode: 381.59s observed submission-to-terminal check; reply restored after reload, dialogue counts 28/25/25/28/28; immediate cleanup verified in D1. Historical 14m36s remains a reported reference, not a controlled paired baseline.
 
 ## Current request — Results stuck on "Executing..."
 - [x] Root cause: story jobs ran inside request background time, which Cloudflare cuts short; dead jobs stayed "running" forever.
