@@ -44,6 +44,67 @@ describe("story workspace bridge", () => {
     expect(q("SELECT * FROM cleanup_tasks")).toHaveLength(1);
   });
 
+  const TEMP = ["generation_requests", "request_context", "request_constraints", "job_slots", "prompt_versions", "generation_attempts", "validation_runs", "validation_findings", "job_timing_metrics"];
+  const count = (t: string, jobId?: string) => {
+    const col = t === "prompt_versions" ? "slot_id IN (SELECT slot_id FROM job_slots WHERE job_id = ?)" : t === "validation_findings" ? "validation_id IN (SELECT validation_id FROM validation_runs WHERE job_id = ?)" : "job_id = ?";
+    return jobId ? (raw.prepare(`SELECT COUNT(*) c FROM ${t} WHERE ${col}`).get(jobId) as any).c : (raw.prepare(`SELECT COUNT(*) c FROM ${t}`).get() as any).c;
+  };
+  const build = async (userId: string, rtId: string) => {
+    const w = await openStoryWorkspace({ userId, jobId: rtId, chatId: `chat-${rtId}`, prompt: "p", count: 5, meta, db });
+    await w.blueprint("bp");
+    for (let i = 0; i < 5; i++) { await w.attempt(4 + i, "generation", Date.now(), true); await w.validated(i, `s${i}`, i === 0 ? ["Scene 1 dialogue has 10 words"] : [], "generation"); await w.slotDone(i, true); }
+    await w.finalValidation([]);
+    return (raw.prepare("SELECT id FROM generation_jobs WHERE idempotency_key = ?").get(`runtime:${rtId}`) as any).id as string;
+  };
+
+  it("cleans the sandbox immediately once the reply is verified saved", async () => {
+    const id = await build("u1", "rt-a");
+    await closeStoryWorkspace("u1", "rt-a", true, db, async () => true);
+    for (const t of TEMP) expect(count(t, id)).toBe(0);
+    expect((raw.prepare("SELECT cleanup_status FROM cleanup_tasks WHERE job_id = ?").get(id) as any).cleanup_status).toBe("completed");
+    const ev = raw.prepare("SELECT event_type FROM generation_events WHERE job_id = ?").all(id) as any[];
+    expect(ev.map((e) => e.event_type)).toEqual(["cleanup_completed"]);
+  });
+
+  it("keeps sandbox data when the reply is not verified or delivery failed", async () => {
+    const a = await build("u1", "rt-b");
+    await closeStoryWorkspace("u1", "rt-b", true, db, async () => false);
+    expect(count("job_slots", a)).toBeGreaterThan(0);
+    expect((raw.prepare("SELECT cleanup_status, scheduled_at FROM cleanup_tasks WHERE job_id = ?").get(a) as any).scheduled_at).toBeGreaterThan(Date.now() + 60_000);
+    const b = await build("u1", "rt-c");
+    await closeStoryWorkspace("u1", "rt-c", false, db, async () => true);
+    expect(count("job_slots", b)).toBeGreaterThan(0);
+    expect((raw.prepare("SELECT workflow_status FROM generation_jobs WHERE id = ?").get(b) as any).workflow_status).toBe("failed");
+    // verifier throwing = not verified
+    const c = await build("u1", "rt-d");
+    await closeStoryWorkspace("u1", "rt-d", true, db, async () => { throw new Error("d1 down"); });
+    expect(count("prompt_versions", c)).toBeGreaterThan(0);
+  });
+
+  it("retries and concurrent closes are idempotent", async () => {
+    const id = await build("u1", "rt-e");
+    await closeStoryWorkspace("u1", "rt-e", true, db, async () => false); // first try not yet verified
+    expect(count("job_slots", id)).toBeGreaterThan(0);
+    await Promise.all([1, 2, 3].map(() => closeStoryWorkspace("u1", "rt-e", true, db, async () => true)));
+    for (const t of TEMP) expect(count(t, id)).toBe(0);
+    expect(raw.prepare("SELECT * FROM cleanup_tasks WHERE job_id = ?").all(id)).toHaveLength(1);
+    expect(raw.prepare("SELECT * FROM generation_events WHERE job_id = ? AND event_type = 'delivered'").all(id)).toHaveLength(0);
+    await closeStoryWorkspace("u1", "rt-e", true, db, async () => true);
+    expect(raw.prepare("SELECT * FROM generation_events WHERE job_id = ? AND event_type = 'cleanup_completed'").all(id)).toHaveLength(1);
+  });
+
+  it("never touches other jobs or other users", async () => {
+    const mine = await build("u1", "rt-f");
+    const other = await build("u1", "rt-g");
+    const theirs = await build("u2", "rt-h");
+    const before = TEMP.map((t) => [count(t, other), count(t, theirs)]);
+    await closeStoryWorkspace("u1", "rt-f", true, db, async () => true);
+    // another user cannot trigger cleanup of u2's job
+    await closeStoryWorkspace("u1", "rt-h", true, db, async () => true);
+    for (const t of TEMP) expect(count(t, mine)).toBe(0);
+    expect(TEMP.map((t) => [count(t, other), count(t, theirs)])).toEqual(before);
+  });
+
   it("resuming the same runtime job never creates a second workspace", async () => {
     await open(); await open();
     expect(raw.prepare("SELECT * FROM generation_jobs").all()).toHaveLength(1);
