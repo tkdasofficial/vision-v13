@@ -210,13 +210,14 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
   for (let i = 0; i < count; i++) {
     if (await cancelRequested(jobId)) return;
     const slotId = claimedIds[i];
-    await setStage(jobId, `writing_scene_${i + 1}`);
     const current = (await slots.listSlots(userId, jobId)).find((s) => s.slot_id === slotId);
     if (!current) { failedScenes++; continue; }
     if (current.status === "validated" && current.result_ref) {
       scenes.push((await slots.readRecord(userId, current.result_ref))?.content ?? "");
       continue;
     }
+
+    await setStage(jobId, `writing_scene_${i + 1}`);
 
     // Generate, then score. Below 90: regenerate once, then bounded Fix Prompt rounds.
     // Every candidate is checkpointed on the slot, so each step can run in its own queue run.
