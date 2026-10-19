@@ -4,7 +4,8 @@
 - [x] Inspect queue configuration, polling, retries and resumable database work; targeted baseline: 81 tests passed.
 - [x] Remove duplicate polling and redundant owner-slot reads without changing generation settings or safety waits; accepted-scene stage writes also skipped.
 - [x] Targeted timing, retry, resume, isolation, validation, permanent reply and cleanup regressions pass (84 tests); full post-change comparison recorded in docs/generation-latency-review-2026-10-19.md.
-- [ ] Comparable authenticated five-scene before/after timings and deployment — requires usable access to the same test account; old password is unavailable and must not be reused.
+- [x] Deploy backend on explicit request after 1,604 passing tests — version ada17d4b-8269-4f88-9192-899c28e4ecbd; deployed health HTTP 200.
+- [ ] Repeat the same-account five-scene test and measure time against the historical 14m36s — blocked on usable account session; fresh browser redirects to login, and old password must not be reused.
 
 ## Current request — Results stuck on "Executing..."
 - [x] Root cause: story jobs ran inside request background time, which Cloudflare cuts short; dead jobs stayed "running" forever.
