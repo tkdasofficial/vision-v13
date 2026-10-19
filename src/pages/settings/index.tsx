@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from "react";
-import { Palette, Languages, Sparkles, MessagesSquare, Database, ShieldCheck, PersonStanding, Bell, Info, User, Inbox, Crown, LayoutDashboard, HelpCircle, LifeBuoy, BookOpen, LogOut, ChevronRight, Pencil, ArrowLeft, Loader2 } from "lucide-react";
+import { Palette, Languages, Sparkles, MessagesSquare, Database, ShieldCheck, PersonStanding, Bell, Info, User, Inbox, Crown, LayoutDashboard, HelpCircle, LifeBuoy, BookOpen, LogOut, Brain, ChevronRight, Pencil, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "@/lib/router-compat";
@@ -8,6 +8,7 @@ export const SETTINGS_CATEGORIES = [
   { to: "/settings/appearance", icon: Palette, title: "Appearance", desc: "Theme, accent colour and text size" },
   { to: "/settings/language", icon: Languages, title: "Language", desc: "Interface language" },
   { to: "/settings/ai", icon: Sparkles, title: "AI Preferences", desc: "Default mode, answer style, custom instructions" },
+  { to: "/settings/memory", icon: Brain, title: "Memory", desc: "Saved memories and chat history" },
   { to: "/settings/chat", icon: MessagesSquare, title: "Chat & History", desc: "Export or clear conversations" },
   { to: "/settings/privacy", icon: Database, title: "Privacy & Data", desc: "Your data, research documents and deletion" },
   { to: "/settings/security", icon: ShieldCheck, title: "Security", desc: "Password and two-step sign-in" },
