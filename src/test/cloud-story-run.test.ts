@@ -4,11 +4,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb } from "./helpers/fake-slot-db";
 
-const h = vi.hoisted(() => ({ db: null as any, d1Calls: [] as { sql: string; params: unknown[] }[] }));
+const h = vi.hoisted(() => ({ db: null as any, artifact: "", d1Calls: [] as { sql: string; params: unknown[] }[] }));
 
 vi.mock("@/lib/sandbox/db.server", () => ({ sandboxDb: (sql: string, params?: unknown[]) => h.db(sql, params), sandboxReady: () => true }));
 vi.mock("@/lib/cloud/d1.server", () => ({ d1: async (sql: string, params: unknown[] = []) => { h.d1Calls.push({ sql, params }); return []; } }));
-vi.mock("@/lib/jobs/artifact-store.server", () => ({ putD1Artifact: async () => ({ key: "k", chunks: 1 }) }));
+vi.mock("@/lib/jobs/artifact-store.server", () => ({ putD1Artifact: async (bytes: Uint8Array) => { h.artifact = new TextDecoder().decode(bytes); return { key: "k", chunks: 1 }; } }));
 
 import { runCloudStoryJob } from "@/lib/runtime/cloud-story.server";
 import { JobRun } from "@/lib/jobs/jobs.server";
@@ -38,7 +38,7 @@ function scripted(badFirst: Set<number>) {
   return { call, calls };
 }
 
-beforeEach(() => { h.db = fakeDb().db; h.d1Calls = []; resetSlotSetup(); });
+beforeEach(() => { h.db = fakeDb().db; h.artifact = ""; h.d1Calls = []; resetSlotSetup(); });
 
 describe("runCloudStoryJob", () => {
   it("regenerates a below-90 scene in its own slot instead of failing it", async () => {
@@ -103,6 +103,31 @@ describe("runCloudStoryJob", () => {
 });
 
 describe("full story format (slot 2)", () => {
+  it("repairs leaked bold inline components before uploading exactly one scene series", async () => {
+    let attempts = 0;
+    const base = scripted(new Set());
+    const call = async (messages: any[]) => {
+      if (String(messages[0].content).startsWith("Write the complete story")) {
+        attempts++;
+        return ok(attempts === 1 ? `${STORY}\n\n**Visual Prompt:** Unnumbered scene.\n**Dialogue:** MARA: hello.` : STORY);
+      }
+      return base.call(messages);
+    };
+    await runCloudStoryJob(new JobRun("job-leaked-1", "user-1"), PROMPT, { call });
+    expect(attempts).toBe(2);
+    expect(h.artifact).not.toContain("Unnumbered scene.");
+    expect(h.artifact.match(/### Visual Prompt/g)).toHaveLength(2);
+    expect(h.artifact.match(/### Dialogue/g)).toHaveLength(2);
+  });
+  it("retains internal story context but delivers only the requested pair per scene", async () => {
+    const base = scripted(new Set());
+    const request = "Create a story of 2 scenes and give me both visual prompt & dialogue. Each scene must contain 25 to 30 words of dialogue.";
+    await runCloudStoryJob(new JobRun("job-pair-only", "user-1"), request, { call: base.call });
+    expect(base.calls).toContain("story");
+    expect(h.artifact).not.toContain("Mara arrives at the cabin.");
+    expect(h.artifact.match(/### Visual Prompt/g)).toHaveLength(2);
+    expect(h.artifact.match(/### Dialogue/g)).toHaveLength(2);
+  });
   it("regenerates a scene-formatted story once and delivers the prose version", async () => {
     let storyCalls = 0;
     const base = scripted(new Set());
