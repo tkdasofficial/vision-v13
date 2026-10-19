@@ -1,0 +1,79 @@
+# VISION Worker "vision" — the ONLY backend. The full app (SSR, server functions,
+# /api/* routes) plus the auth-gateway endpoints (OAuth start/callback, /mail,
+# /ai/* relay, /runtime/*, /health, JWKS) all run here. The frontend may be hosted
+# anywhere: set AUTH_ORIGIN to its public origin, add that origin to
+# ALLOWED_RETURN_ORIGINS below, and set API_ORIGIN on the hosting side to this
+# Worker's URL so every /api/* call is forwarded here. API calls never execute
+# on the frontend's hosting environment.
+name = "vision"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Build output (run `bun run build` first): worker/entry.mjs wraps the built server
+# (dist/server/index.mjs) and adds the story Queue consumer; static client assets below.
+main = "worker/entry.mjs"
+
+[assets]
+directory = "dist/client"
+binding = "ASSETS"
+
+[vars]
+# Public origin of the deployed frontend, e.g. "https://vision.example.com".
+# Used for OAuth callbacks and absolute links; must be in ALLOWED_RETURN_ORIGINS.
+AUTH_ORIGIN = "https://id-preview--649bac9d-0a85-403c-b17d-a735922bb57a.lovable.app"
+# Exact origins the gateway may send users back to, and the only origins whose
+# /ai relay calls are accepted (comma-separated).
+ALLOWED_RETURN_ORIGINS = "https://id-preview--649bac9d-0a85-403c-b17d-a735922bb57a.lovable.app,https://project--649bac9d-0a85-403c-b17d-a735922bb57a-dev.lovable.app,https://project--649bac9d-0a85-403c-b17d-a735922bb57a.lovable.app,https://649bac9d-0a85-403c-b17d-a735922bb57a.lovableproject.com,http://localhost:8080"
+
+# Workers AI binding — the primary path for the Cloudflare model (no API token,
+# no REST quota). providers.server.ts relays to this Worker's /ai endpoint off-Worker.
+[ai]
+binding = "AI"
+
+# VISION database — reached through this binding when deployed (no API token needed).
+[[d1_databases]]
+binding = "DB"
+database_name = "vision"
+database_id = "ded73090-4d47-45ac-952f-24ae2beaba5f"
+
+# vision-sandbox — temporary output-generation store for the Long Context
+# Generation system (jobs, plans, chunks, context, events, outputs).
+[[d1_databases]]
+binding = "SANDBOX_DB"
+database_name = "vision-sandbox"
+database_id = "4d8098d8-e148-46ea-9e79-b4d35c148c8f"
+
+# CPU limit: Workers Free plan (no [limits] cpu_ms). Story queue runs make one non-streaming AI call each, so every run fits the free CPU budget.
+
+# Story generation runs as resumable Cloudflare Queue runs (never GitHub Actions).
+# One run at a time; a crashed run is redelivered and resumes from its finished slots.
+[[queues.producers]]
+queue = "vision-story"
+binding = "STORY_QUEUE"
+
+[[queues.consumers]]
+queue = "vision-story"
+max_batch_size = 1
+max_batch_timeout = 1
+max_retries = 3
+max_concurrency = 1
+
+# Gmail SMTP credentials from the account Secrets Store (used by POST /mail).
+[[secrets_store_secrets]]
+binding = "SMTP_EMAIL"
+store_id = "b4394e5cddb24a46b6984c69ce02b8b6"
+secret_name = "SMTP_EMAIL"
+
+[[secrets_store_secrets]]
+binding = "SMTP_PASSWORD"
+store_id = "b4394e5cddb24a46b6984c69ce02b8b6"
+secret_name = "SMTP_PASSWORD"
+
+# Secrets (already set on the "vision" Worker, never committed):
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+#   STATE_KEY, SIGNING_KEY                    — OAuth state sealing + assertion signing
+#   NVIDIA_API_KEY, GROQ_API_KEY              — AI providers (fallback chain)
+#   MAIL_TOKEN                                — shared token for the /mail endpoint
+#   CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN — D1 REST fallback (off-Worker dev)
+# Deploy only with: npx wrangler deploy -c wrangler.toml  (from the project root)

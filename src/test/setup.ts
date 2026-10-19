@@ -1,11 +1,14 @@
-import "@testing-library/jest-dom/vitest";
+import "@testing-library/jest-dom";
 
-Object.defineProperty(window, "scrollTo", {
-  writable: true,
-  value: () => {},
-});
+if (typeof window !== "undefined" && !globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
 
-Object.defineProperty(window, "matchMedia", {
+if (typeof window !== "undefined") Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({
     matches: false,
