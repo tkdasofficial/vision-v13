@@ -52,6 +52,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiChatStatusRouteImport } from './routes/api/chat-status'
 import { Route as ApiFilesRouteImport } from './routes/api/files'
 import { Route as ApiJobsRouteImport } from './routes/api/jobs'
+import { Route as ApiMemoriesRouteImport } from './routes/api/memories'
 import { Route as ApiSandboxGenerationsRouteImport } from './routes/api/sandbox-generations'
 import { Route as AppSplatRouteImport } from './routes/app.$'
 import { Route as AuthForgetPasswordRouteImport } from './routes/auth.forget-password'
@@ -89,6 +90,7 @@ import { Route as SettingsAiRouteImport } from './routes/settings.ai'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsChatRouteImport } from './routes/settings.chat'
 import { Route as SettingsLanguageRouteImport } from './routes/settings.language'
+import { Route as SettingsMemoryRouteImport } from './routes/settings.memory'
 import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
 import { Route as SettingsPrivacyRouteImport } from './routes/settings.privacy'
 import { Route as StudioImagesRouteImport } from './routes/studio.images'
@@ -325,6 +327,11 @@ const ApiJobsRoute = ApiJobsRouteImport.update({
   path: '/api/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMemoriesRoute = ApiMemoriesRouteImport.update({
+  id: '/api/memories',
+  path: '/api/memories',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSandboxGenerationsRoute = ApiSandboxGenerationsRouteImport.update({
   id: '/api/sandbox-generations',
   path: '/api/sandbox-generations',
@@ -511,6 +518,11 @@ const SettingsLanguageRoute = SettingsLanguageRouteImport.update({
   path: '/language',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsMemoryRoute = SettingsMemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -658,6 +670,7 @@ export interface FileRoutesByFullPath {
   '/api/chat-status': typeof ApiChatStatusRoute
   '/api/files': typeof ApiFilesRoute
   '/api/jobs': typeof ApiJobsRouteWithChildren
+  '/api/memories': typeof ApiMemoriesRoute
   '/api/sandbox-generations': typeof ApiSandboxGenerationsRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/auth/forget-password': typeof AuthForgetPasswordRoute
@@ -691,6 +704,7 @@ export interface FileRoutesByFullPath {
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/chat': typeof SettingsChatRoute
   '/settings/language': typeof SettingsLanguageRoute
+  '/settings/memory': typeof SettingsMemoryRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/studio/images': typeof StudioImagesRoute
@@ -757,6 +771,7 @@ export interface FileRoutesByTo {
   '/api/chat-status': typeof ApiChatStatusRoute
   '/api/files': typeof ApiFilesRoute
   '/api/jobs': typeof ApiJobsRouteWithChildren
+  '/api/memories': typeof ApiMemoriesRoute
   '/api/sandbox-generations': typeof ApiSandboxGenerationsRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/auth/forget-password': typeof AuthForgetPasswordRoute
@@ -790,6 +805,7 @@ export interface FileRoutesByTo {
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/chat': typeof SettingsChatRoute
   '/settings/language': typeof SettingsLanguageRoute
+  '/settings/memory': typeof SettingsMemoryRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/studio/images': typeof StudioImagesRoute
@@ -860,6 +876,7 @@ export interface FileRoutesById {
   '/api/chat-status': typeof ApiChatStatusRoute
   '/api/files': typeof ApiFilesRoute
   '/api/jobs': typeof ApiJobsRouteWithChildren
+  '/api/memories': typeof ApiMemoriesRoute
   '/api/sandbox-generations': typeof ApiSandboxGenerationsRouteWithChildren
   '/app/$': typeof AppSplatRoute
   '/auth/forget-password': typeof AuthForgetPasswordRoute
@@ -893,6 +910,7 @@ export interface FileRoutesById {
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/chat': typeof SettingsChatRoute
   '/settings/language': typeof SettingsLanguageRoute
+  '/settings/memory': typeof SettingsMemoryRoute
   '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/privacy': typeof SettingsPrivacyRoute
   '/studio/images': typeof StudioImagesRoute
@@ -964,6 +982,7 @@ export interface FileRouteTypes {
     | '/api/chat-status'
     | '/api/files'
     | '/api/jobs'
+    | '/api/memories'
     | '/api/sandbox-generations'
     | '/app/$'
     | '/auth/forget-password'
@@ -997,6 +1016,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/chat'
     | '/settings/language'
+    | '/settings/memory'
     | '/settings/notifications'
     | '/settings/privacy'
     | '/studio/images'
@@ -1063,6 +1083,7 @@ export interface FileRouteTypes {
     | '/api/chat-status'
     | '/api/files'
     | '/api/jobs'
+    | '/api/memories'
     | '/api/sandbox-generations'
     | '/app/$'
     | '/auth/forget-password'
@@ -1096,6 +1117,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/chat'
     | '/settings/language'
+    | '/settings/memory'
     | '/settings/notifications'
     | '/settings/privacy'
     | '/studio/images'
@@ -1165,6 +1187,7 @@ export interface FileRouteTypes {
     | '/api/chat-status'
     | '/api/files'
     | '/api/jobs'
+    | '/api/memories'
     | '/api/sandbox-generations'
     | '/app/$'
     | '/auth/forget-password'
@@ -1198,6 +1221,7 @@ export interface FileRouteTypes {
     | '/settings/appearance'
     | '/settings/chat'
     | '/settings/language'
+    | '/settings/memory'
     | '/settings/notifications'
     | '/settings/privacy'
     | '/studio/images'
@@ -1255,6 +1279,7 @@ export interface RootRouteChildren {
   ApiChatStatusRoute: typeof ApiChatStatusRoute
   ApiFilesRoute: typeof ApiFilesRoute
   ApiJobsRoute: typeof ApiJobsRouteWithChildren
+  ApiMemoriesRoute: typeof ApiMemoriesRoute
   ApiSandboxGenerationsRoute: typeof ApiSandboxGenerationsRouteWithChildren
   BillingPlansRoute: typeof BillingPlansRoute
   DocsSplatRoute: typeof DocsSplatRoute
@@ -1584,6 +1609,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiJobsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/memories': {
+      id: '/api/memories'
+      path: '/api/memories'
+      fullPath: '/api/memories'
+      preLoaderRoute: typeof ApiMemoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sandbox-generations': {
       id: '/api/sandbox-generations'
       path: '/api/sandbox-generations'
@@ -1841,6 +1873,13 @@ declare module '@tanstack/react-router' {
       path: '/language'
       fullPath: '/settings/language'
       preLoaderRoute: typeof SettingsLanguageRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/memory': {
+      id: '/settings/memory'
+      path: '/memory'
+      fullPath: '/settings/memory'
+      preLoaderRoute: typeof SettingsMemoryRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/notifications': {
@@ -2101,6 +2140,7 @@ interface SettingsRouteChildren {
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsChatRoute: typeof SettingsChatRoute
   SettingsLanguageRoute: typeof SettingsLanguageRoute
+  SettingsMemoryRoute: typeof SettingsMemoryRoute
   SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsPrivacyRoute: typeof SettingsPrivacyRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
@@ -2115,6 +2155,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsChatRoute: SettingsChatRoute,
   SettingsLanguageRoute: SettingsLanguageRoute,
+  SettingsMemoryRoute: SettingsMemoryRoute,
   SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsPrivacyRoute: SettingsPrivacyRoute,
   SettingsIndexRoute: SettingsIndexRoute,
@@ -2191,6 +2232,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatStatusRoute: ApiChatStatusRoute,
   ApiFilesRoute: ApiFilesRoute,
   ApiJobsRoute: ApiJobsRouteWithChildren,
+  ApiMemoriesRoute: ApiMemoriesRoute,
   ApiSandboxGenerationsRoute: ApiSandboxGenerationsRouteWithChildren,
   BillingPlansRoute: BillingPlansRoute,
   DocsSplatRoute: DocsSplatRoute,

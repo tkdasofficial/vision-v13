@@ -245,3 +245,26 @@ export function memoryOutcomeNote(o: MemoryOutcome): string {
     case "lookup_failed": return `The user asked you to forget something, but permanent memory could not be read, so nothing was deleted. ${FAIL_TAIL}`;
   }
 }
+
+// ---- Reference chat history (ChatGPT-style): relevant snippets from the user's OTHER non-project chats. ----
+export type PastChatRow = { chatId: string; title: string; role: string; content: string; createdAt: string };
+const PERSONAL = "__personal__";
+
+/** Relevant past-chat rows only (no recency fallback: unrelated old chats never leak into answers). */
+export function rankPastChats(rows: PastChatRow[], currentChatId: string, text: string, max = 6): PastChatRow[] {
+  const tagged = rows.map((r) => ({ ...r, projectId: PERSONAL }));
+  const ranked = rankProjectRows(tagged, PERSONAL, currentChatId, text, max);
+  const qw = new Set(words(text));
+  return ranked.filter((r) => words(`${r.title} ${r.content.slice(0, 4000)}`).some((w) => qw.has(w)));
+}
+
+export function pastChatsBlock(rows: PastChatRow[], budget = 4000): string {
+  const body = projectRowsBlock(rows.map((r) => ({ ...r, projectId: PERSONAL })), budget);
+  if (!body) return "";
+  return body.replace(/^Project memory \([^\n]*\):/, "Chat history memory (relevant snippets from the user's earlier chats; background only — use naturally when it helps, never claim certainty about it, and the current chat wins on conflicts):").replace("project-memory", "chat-history");
+}
+
+/** Memory switches from Settings → Memory. Defaults on, like ChatGPT. */
+export function memorySwitches(p: { savedMemories?: boolean; chatHistory?: boolean }): { saved: boolean; history: boolean } {
+  return { saved: p.savedMemories !== false, history: p.chatHistory !== false };
+}

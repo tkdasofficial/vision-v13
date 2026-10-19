@@ -540,6 +540,13 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
           reply = { ...reply, document: await saveDocumentFn({ data: { title, content: finalText } }) };
         } catch { /* keep the report as a normal chat reply */ }
       }
+      // "Memory updated" notice: only when the database shows a memory written during this reply.
+      if (finalText && !stopped) {
+        try {
+          const { listMemories, changedSince } = await import("@/lib/memory-client");
+          if (changedSince(await listMemories(), taskStart)) reply = { ...reply, memoryUpdated: true };
+        } catch { /* notice is optional */ }
+      }
       // Save the full reply first, even if this screen is replaced while it renders.
       if (sessionId) {
         await persistChatMessages(sessionId, [...messages, userMsg, reply]);

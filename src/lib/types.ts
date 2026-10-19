@@ -92,6 +92,8 @@ export type ChatMessage = {
   /** A branch keeps the result snapshot without starting or duplicating a job. */
   archivedJob?: boolean;
   id: string;
+  /** A memory was saved/updated/removed while producing this reply. */
+  memoryUpdated?: boolean;
   /** Long prompts pasted as their own card (50+ lines). `typed` is what the user wrote around them. */
   pasted?: PastedBlock[];
   typed?: string;
