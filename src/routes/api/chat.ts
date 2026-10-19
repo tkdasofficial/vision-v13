@@ -90,9 +90,18 @@ export const Route = createFileRoute("/api/chat")({
             const pm = await loadProjectMemory(caller.user.id, chatCtx.projectId, chatId, lastText);
             if (pm) system += `\n\n${pm}`;
           }
+          const { memorySwitches } = await import("@/lib/ai/memory");
+          const sw = memorySwitches(prefs);
+          // Reference chat history: relevant snippets from the user's other non-project chats.
+          if (sw.history && includesPersonal(chatCtx.scope) && !chatCtx.projectId && chatCtx.owned) {
+            const { loadPastChatsMemory } = await import("@/lib/ai/memory.server");
+            const past = await loadPastChatsMemory(caller.user.id, chatId, lastText);
+            if (past) system += `\n\n${past}`;
+          }
+          if (!sw.saved && includesPersonal(chatCtx.scope)) system += "\n\nSaved memory is turned off by the user in Settings → Memory. Do not claim to save, update or recall memories; if asked, say memory is off and can be turned on in Settings → Memory.";
           // Permanent memory: personal facts. Never injected into "project"-scope chats (no personal leak).
           // Every save/delete is confirmed to the model only after D1 reports success.
-          if (includesPersonal(chatCtx.scope) && lastText.trim()) {
+          if (sw.saved && includesPersonal(chatCtx.scope) && lastText.trim()) {
             const { detectMemoryCommand, detectAutoMemory, matchForget, relevantMemories, permanentMemoryBlock, memoryOutcomeNote, recallMemoryNote } = await import("@/lib/ai/memory");
             const { loadPermanentMemories, tryLoadPermanentMemories, savePermanentMemory, deletePermanentMemories } = await import("@/lib/ai/memory.server");
             const memReq = detectMemoryCommand(lastText);

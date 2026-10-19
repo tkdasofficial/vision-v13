@@ -120,3 +120,39 @@ export async function loadConversationHistory(userId: string, chatId: string | u
     WHERE s.id = ? AND s.user_id = ? AND m.role IN ('user','assistant') ORDER BY m.created_at ASC LIMIT 1000`, [chatId, userId]).catch(() => []);
   return rows.filter((r) => typeof r.content === "string" && r.content.trim()).map((r) => ({ role: r.role === "assistant" ? "assistant" : "user", content: r.content }));
 }
+
+export type MemoryItem = { id: string; content: string; createdAt: number; updatedAt: number; source: string };
+
+/** Full list for Settings → Memory (owner-scoped). Null on failure. */
+export async function listMemoryItems(userId: string): Promise<MemoryItem[] | null> {
+  try {
+    await ensureMem();
+    const rows: any[] = await d1("SELECT id, content, created_at, updated_at, source FROM user_memories WHERE user_id = ? ORDER BY COALESCE(updated_at, created_at) DESC LIMIT 500", [userId]);
+    return rows.map((r) => ({ id: String(r.id), content: String(r.content ?? ""), createdAt: Number(r.created_at) || 0, updatedAt: Number(r.updated_at ?? r.created_at) || 0, source: String(r.source ?? "explicit") }));
+  } catch { return null; }
+}
+
+/** Edits one memory the user owns. Returns false when nothing was changed. */
+export async function editMemory(userId: string, id: string, content: string): Promise<boolean> {
+  const t = content.trim();
+  if (t.length < 2 || t.length > 500) return false;
+  try {
+    await ensureMem();
+    return (await d1("UPDATE user_memories SET content = ?, updated_at = ?, source = 'explicit' WHERE id = ? AND user_id = ? RETURNING id", [t, Date.now(), id, userId])).length > 0;
+  } catch { return false; }
+}
+
+/** Relevant snippets from the user's other non-project chats ("Reference chat history"). Fails soft to "". */
+export async function loadPastChatsMemory(userId: string, chatId: string | undefined, text: string): Promise<string> {
+  if (!text.trim()) return "";
+  const { rankPastChats, pastChatsBlock } = await import("./memory");
+  const rows: any[] = await d1(
+    `SELECT s.id AS chatId, s.title AS title, m.role AS role, m.content AS content, m.created_at AS createdAt
+     FROM chat_sessions s JOIN chat_messages m ON m.session_id = s.id
+     WHERE s.user_id = ? AND s.project_id IS NULL AND s.id <> ? AND m.role IN ('user','assistant')
+     ORDER BY m.created_at DESC LIMIT 200`,
+    [userId, chatId ?? ""],
+  ).catch(() => []);
+  const norm = rows.map((r) => ({ chatId: String(r.chatId), title: String(r.title ?? ""), role: String(r.role), content: String(r.content ?? ""), createdAt: String(r.createdAt ?? "") }));
+  return pastChatsBlock(rankPastChats(norm, chatId ?? "", text));
+}

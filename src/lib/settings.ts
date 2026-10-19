@@ -20,6 +20,10 @@ export type Prefs = {
   notifyResearch: boolean;
   /** Plugins added to the chat "@" picker; null = never changed (defaults apply). */
   plugins: string[] | null;
+  /** Settings → Memory: use and update saved memories. */
+  savedMemories: boolean;
+  /** Settings → Memory: draw on relevant earlier chats. */
+  chatHistory: boolean;
 };
 
 export const DEFAULT_PREFS: Prefs = {
@@ -27,6 +31,7 @@ export const DEFAULT_PREFS: Prefs = {
   responseLength: "balanced", tone: "neutral", customInstructions: "", webSearch: "auto",
   codeComments: true, codeExplain: "brief", reduceMotion: false, highContrast: false,
   largeTargets: false, notifyReplies: false, notifyResearch: true, plugins: null,
+  savedMemories: true, chatHistory: true,
 };
 
 export const MAX_INSTRUCTIONS = 1000;
@@ -58,6 +63,8 @@ export function parsePrefs(raw: unknown): Prefs {
     notifyReplies: bool(o.notifyReplies, d.notifyReplies),
     notifyResearch: bool(o.notifyResearch, d.notifyResearch),
     plugins: Array.isArray(o.plugins) ? normalizeSelection(o.plugins) : null,
+    savedMemories: bool(o.savedMemories, d.savedMemories),
+    chatHistory: bool(o.chatHistory, d.chatHistory),
   };
 }
 
