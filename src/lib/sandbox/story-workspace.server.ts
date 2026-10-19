@@ -73,9 +73,9 @@ export async function openStoryWorkspace(input: {
         await ws.setSlotStatus(db, input.userId, slotIds.get(1)!, "completed");
         await ws.saveVersion(db, input.userId, slotIds.get(2)!, JSON.stringify({ count: input.count, ...input.meta }));
         await ws.setSlotStatus(db, input.userId, slotIds.get(2)!, "completed");
-        await ws.transition(db, input.userId, jobId, "initializing");
-        await ws.transition(db, input.userId, jobId, "generating");
-        if (input.queuedAt) await ws.recordTiming(db, input.userId, jobId, { queueWaitMs: Math.max(0, Date.now() - input.queuedAt) });
+        await ws.transition(db, input.userId, jobId!, "initializing");
+        await ws.transition(db, input.userId, jobId!, "generating");
+        if (input.queuedAt) await ws.recordTiming(db, input.userId, jobId!, { queueWaitMs: Math.max(0, Date.now() - input.queuedAt) });
       }
     } catch (e) { log("init", e); jobId = null; }
   }
