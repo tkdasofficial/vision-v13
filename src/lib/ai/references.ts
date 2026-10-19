@@ -57,7 +57,7 @@ export function resolveReference(request: string, history: ConvMsg[]): Resolutio
       const workbook = [...assistants].reverse().find((a) => /\bSales_Data\b/i.test(a.text) && /\bRegional_Analysis\b/i.test(a.text));
       if (workbook) return { kind: "found", role: "assistant", ordinal: assistants.indexOf(workbook) + 1, index: workbook.i, id: workbook.m.id, content: workbook.text, label: "earlier workbook" };
     }
-    const nm = /\b(?:the|that|this|your|above)\s+(story|poem|essay|article|script|letter|report|summary|answer|response|content|text|workbook|webbook|spreadsheet)\b/.exec(t);
+    const nm = /\b(?:the|that|this|your|above|all)\s+(?:(?:full|complete|entire|whole|final|generated|same|above|previous|last|latest)\s+)*(story|poem|essay|article|script|letter|report|summary|answer|response|content|text|workbook|webbook|spreadsheet|prompt|dialogue|scene)s?\b/.exec(t);
     if (nm) {
       const noun = nm[1] === "webbook" ? "workbook" : nm[1];
       const generic = /answer|response|content|text/.test(noun);
