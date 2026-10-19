@@ -2,8 +2,8 @@
 
 ## Current request — Reduce unnecessary prompt-generation latency
 - [x] Inspect queue configuration, polling, retries and resumable database work; targeted baseline: 81 tests passed.
-- [ ] Remove duplicate polling and redundant owner-slot reads without changing generation settings or safety waits.
-- [ ] Run timing, retry, resume, isolation, validation and delivery regressions against baseline.
+- [x] Remove duplicate polling and redundant owner-slot reads without changing generation settings or safety waits; accepted-scene stage writes also skipped.
+- [x] Targeted timing, retry, resume, isolation, validation, permanent reply and cleanup regressions pass (84 tests); full post-change comparison recorded in docs/generation-latency-review-2026-10-19.md.
 - [ ] Comparable authenticated five-scene before/after timings and deployment — requires usable access to the same test account; old password is unavailable and must not be reused.
 
 ## Current request — Results stuck on "Executing..."
