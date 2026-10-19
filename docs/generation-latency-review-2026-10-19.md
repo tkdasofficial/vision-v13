@@ -32,8 +32,23 @@ Small optimizations deployed to the existing Cloudflare Worker on the user's exp
 - Single-call story regression still proves exact provider-call order, unchanged number of runs and no repeated accepted generation, and now checks accepted scene stage is not rewritten on subsequent runs.
 - Automatic preview build reports `build OK`.
 
-## Pending live performance verification
+## Live retest — deployed candidate
 
-Queue time, per-provider body-complete time, polling/network time, validation, repair, database-operation time, inter-run gaps and total five-scene completion time have **not** been measured before/after in comparable live conditions. The historical 14.6-minute run used earlier fixes and is not a valid fresh baseline. No percentage improvement or live generation speed is claimed.
+Using newly supplied credentials once through normal email/password sign-in, recovered the exact original request via Show More in conversation `c5442f0c-67ba-46bf-8073-30575be16cce`. Both old and new sessions have saved mode `chat`. Submitted the unchanged request once through the composer, with input equality asserted:
 
-Resume with usable access to the same account and run the unchanged five-scene prompt on the deployed Worker while recording timing, saved reply and cleanup evidence. Deployment was explicitly requested despite the pending authenticated comparison; live generation time and improvement remain unverified. Do not bypass sign-in, mint a first-party session through database writes or reset a password to unblock the test.
+> Write a story in 5 scenes about Mira, a young lighthouse keeper with short red hair, a yellow raincoat and black boots, and her grey cat Pip, who rescue a lost fishing boat during a storm. For each scene give a detailed Visual Prompt for image generation and a Dialogue of 25-30 words. Keep the characters, clothing, lighthouse setting and objects consistent across all scenes.
+
+- New job: `623f408c-9430-4080-8215-5e2b5d71393c`; conversation: `025b4f8d-5c63-4fbf-aca8-44e59d92f98f`.
+- Observed submission to terminal check: **381.59 seconds (6m22s)**. The browser sampled every five seconds and waited two seconds for terminal rendering, so this is an observed end-to-end upper-bound measurement, not precise provider duration.
+- Permanent user message: `17:27:05.231Z`; assistant reply: `17:33:23.719Z`: **378.488 seconds (6m18.5s)** between saved messages. Runtime row creation `17:27:08.076Z` to saved reply: **375.643 seconds**. Runtime `started_at` and `finished_at` are null and cannot support separate queue/compute timing.
+- Compared with the previously reported 876-second reference: this observed run is approximately **8m14s shorter (~56%)**. The original runtime job was absent from the timestamp query, and its restored UI showed approximately 909 seconds; therefore 14m36s remains a reported historical reference, not a freshly verified identical-boundary baseline. Provider latency and repair differences can affect this result; the whole reduction cannot be attributed to the small optimizations or promised for future requests.
+- Terminal status `completed`; one permanent assistant reply, **9,426 characters**, restored after reload. Five numbered scene sections, each containing Visual Prompt and Dialogue; spoken-word counts **28, 25, 25, 28, 28**, within the requested 25–30 range.
+- Workspace `256fd6ed-29bc-4d3f-86fc-630371d23b28`: workflow `succeeded`; cleanup `completed`, no error. Cleanup started `17:33:25.574Z` and completed `17:33:27.904Z`, roughly 4.2 seconds after permanent reply save and before the next hourly cron.
+- Read-only D1 checks found zero remaining rows for this job in requests, context, constraints, slots, attempts, validation runs/findings, prompt versions and timing metrics. Only `cleanup_completed` event retained. No manual cleanup or database mutation was performed for verification.
+- Final-content caveat: the generated Story also includes duplicated unnumbered Visual Prompt/Dialogue blocks before the five numbered scenes. Scene 2 asks a cat to watch radar/signal the boat, and telescope locations vary. Completion and word counts do not establish independently verified full semantic consistency; no claim of perfect quality or validation regression absence from this one sample.
+
+## Measurement limits
+
+Queue time, per-provider body-complete time, validation, repair, database-operation time and inter-run gaps have not been separately measured before/after in comparable live conditions. Total time for the deployed candidate is measured above; the historical reference is not a controlled paired baseline.
+
+Deployment and one authenticated same-prompt candidate retest are complete. Further causal performance conclusions require a controlled baseline and provider/run-stage timing. No sign-in bypass, session minting through database writes or password reset was used.
