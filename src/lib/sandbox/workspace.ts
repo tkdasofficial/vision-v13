@@ -203,27 +203,55 @@ export async function expireStalled(db: Db, now = Date.now()) {
 
 const WORKSPACE_TABLES = ["validation_findings", "validation_runs", "generation_attempts", "job_timing_metrics", "prompt_versions", "job_slots", "request_constraints", "request_context", "generation_requests"];
 
-/** Deletes due workspaces job-by-job. Touches only vision-sandbox rows of that exact job — never chat history. */
+/** Deletes the temporary workspace rows of exactly one job (vision-sandbox only, never chat history). */
+async function purgeJob(db: Db, userId: string, jobId: string) {
+  const job = (await db("SELECT id FROM generation_jobs WHERE id = ? AND user_id = ?", [jobId, userId]))[0];
+  if (!job) return;
+  await db("DELETE FROM validation_findings WHERE validation_id IN (SELECT validation_id FROM validation_runs WHERE job_id = ?)", [job.id]);
+  await db("DELETE FROM prompt_versions WHERE slot_id IN (SELECT slot_id FROM job_slots WHERE job_id = ?)", [job.id]);
+  for (const t of WORKSPACE_TABLES.filter((t) => t !== "validation_findings" && t !== "prompt_versions")) await db(`DELETE FROM ${t} WHERE job_id = ?`, [job.id]);
+  await db("DELETE FROM generation_events WHERE job_id = ? AND event_type <> 'cleanup_completed'", [job.id]);
+  await event(db, job.id, "cleanup_completed", "completed");
+}
+
+/** Claims one task (CAS) and purges its job. Failure leaves it 'failed' so the scheduled sweep retries. */
+async function runTask(db: Db, task: { cleanup_id: string; job_id: string; user_id: string }, now: number) {
+  const claimed = await db("UPDATE cleanup_tasks SET cleanup_status = 'running', started_at = ? WHERE cleanup_id = ? AND cleanup_status IN ('pending','failed') RETURNING cleanup_id", [now, task.cleanup_id]);
+  if (!claimed.length) return "lost" as const;
+  try {
+    await purgeJob(db, task.user_id, task.job_id);
+    await db("UPDATE cleanup_tasks SET cleanup_status = 'completed', completed_at = ?, last_error = NULL WHERE cleanup_id = ?", [Date.now(), task.cleanup_id]);
+    return "done" as const;
+  } catch (e) {
+    await db("UPDATE cleanup_tasks SET cleanup_status = 'failed', retry_count = retry_count + 1, last_error = ? WHERE cleanup_id = ?", [String((e as Error)?.message ?? e).slice(0, 300), task.cleanup_id]);
+    return "error" as const;
+  }
+}
+
+/**
+ * Immediate cleanup for a succeeded job: runs only when the job is 'succeeded' and `verifyPersisted`
+ * confirms the final result is in permanent storage. Idempotent; concurrent callers race on the CAS claim.
+ * Returns "cleaned" | "already" | "skipped" (not succeeded / not verified) | "failed" (left for the sweep).
+ */
+export async function cleanupNow(db: Db, userId: string, jobId: string, verifyPersisted: () => Promise<boolean>): Promise<"cleaned" | "already" | "skipped" | "failed"> {
+  const job = (await db("SELECT workflow_status FROM generation_jobs WHERE id = ? AND user_id = ?", [jobId, userId]))[0];
+  if (!job || job.workflow_status !== "succeeded") return "skipped";
+  let ok = false;
+  try { ok = await verifyPersisted(); } catch { ok = false; }
+  if (!ok) return "skipped";
+  const now = Date.now();
+  await db("INSERT OR IGNORE INTO cleanup_tasks (cleanup_id, job_id, user_id, cleanup_status, scheduled_at) VALUES (?, ?, ?, 'pending', ?)", [uid(), jobId, userId, now]);
+  const task = (await db("SELECT cleanup_id, job_id, user_id, cleanup_status FROM cleanup_tasks WHERE job_id = ? AND user_id = ?", [jobId, userId]))[0];
+  if (!task) return "skipped";
+  if (task.cleanup_status === "completed" || task.cleanup_status === "running") return "already";
+  const r = await runTask(db, task, now);
+  return r === "done" ? "cleaned" : r === "lost" ? "already" : "failed";
+}
+
+/** Fallback sweep for abandoned, failed, stuck or previously failed cleanups. Job-by-job, never chat history. */
 export async function runCleanup(db: Db, now = Date.now(), limit = 20) {
   const due = await db("SELECT cleanup_id, job_id, user_id, retry_count FROM cleanup_tasks WHERE cleanup_status IN ('pending','failed') AND scheduled_at <= ? AND retry_count < 5 ORDER BY scheduled_at LIMIT ?", [now, limit]);
   let done = 0;
-  for (const task of due) {
-    const claimed = await db("UPDATE cleanup_tasks SET cleanup_status = 'running', started_at = ? WHERE cleanup_id = ? AND cleanup_status IN ('pending','failed') RETURNING cleanup_id", [now, task.cleanup_id]);
-    if (!claimed.length) continue;
-    try {
-      const job = (await db("SELECT id FROM generation_jobs WHERE id = ? AND user_id = ?", [task.job_id, task.user_id]))[0];
-      if (job) {
-        await db("DELETE FROM validation_findings WHERE validation_id IN (SELECT validation_id FROM validation_runs WHERE job_id = ?)", [job.id]);
-        await db("DELETE FROM prompt_versions WHERE slot_id IN (SELECT slot_id FROM job_slots WHERE job_id = ?)", [job.id]);
-        for (const t of WORKSPACE_TABLES.filter((t) => t !== "validation_findings" && t !== "prompt_versions")) await db(`DELETE FROM ${t} WHERE job_id = ?`, [job.id]);
-        await db("DELETE FROM generation_events WHERE job_id = ? AND event_type <> 'cleanup_completed'", [job.id]);
-        await event(db, job.id, "cleanup_completed", "completed");
-      }
-      await db("UPDATE cleanup_tasks SET cleanup_status = 'completed', completed_at = ?, last_error = NULL WHERE cleanup_id = ?", [Date.now(), task.cleanup_id]);
-      done++;
-    } catch (e) {
-      await db("UPDATE cleanup_tasks SET cleanup_status = 'failed', retry_count = retry_count + 1, last_error = ? WHERE cleanup_id = ?", [String((e as Error)?.message ?? e).slice(0, 300), task.cleanup_id]);
-    }
-  }
+  for (const task of due) if ((await runTask(db, task, now)) === "done") done++;
   return done;
 }

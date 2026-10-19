@@ -149,8 +149,8 @@ export async function runQueuedStoryJob(jobId: string): Promise<"done" | "yield"
   const end = (await d1<any>("SELECT status FROM runtime_jobs WHERE job_id = ?", [jobId]))[0];
   if (end && !["queued", "dispatched", "running"].includes(end.status)) {
     // Workspace closes only after the reply is durably saved (status completed); cleanup is scheduled then.
-    const { closeStoryWorkspace } = await import("../sandbox/story-workspace.server");
-    await closeStoryWorkspace(rt.user_id, jobId, end.status === "completed");
+    const { closeStoryWorkspace, replyPersisted } = await import("../sandbox/story-workspace.server");
+    await closeStoryWorkspace(rt.user_id, jobId, end.status === "completed", undefined, () => replyPersisted(rt.user_id, jobId));
     await releaseStorySlots(rt.user_id, jobId);
   }
   return "done";
