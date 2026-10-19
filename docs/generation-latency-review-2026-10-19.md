@@ -24,6 +24,7 @@ Small local optimizations implemented. No Cloudflare deployment, database change
 ## Tests and measurements
 
 - Unchanged full baseline: **109 files, 1,598 passed, 1 skipped**, 69.54 seconds test-suite wall time. This is not generation latency.
+- Full post-change suite: **109 files, 1,604 passed, 1 skipped**, 62.01 seconds test-suite wall time; all previously passing tests still pass, with six added tests. Suite wall-time variation does not establish story speed improvement.
 - Original targeted baseline: **8 files, 81 passed**.
 - Expanded targeted checks after changes: **8 files, 84 passed** (different selection includes slot store and permanent-reply tests). Includes retry recovery, failed delivery retention, concurrent cleanup, cross-user isolation and final validation.
 - Added fake-clock tests establish one GET at 1,200 ms, no duplicate GET at 2,000 ms, terminal resolution at 2,400 ms in a two-observation fixture, no timer after completion, no overlapping slow GETs, stale POST safety and concurrent job independence. These are controlled regression timings, not live speed claims.
