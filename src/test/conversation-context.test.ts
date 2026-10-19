@@ -92,4 +92,8 @@ describe("Implicit story reference", () => {
     const r = resolveReference("convert it to pdf", chat);
     expect(r.kind === "found" && r.id).toBe("a2");
   });
+  it("'PDF of the full story, prompts & dialogues' uses the full story answer", () => {
+    const r = resolveReference("Create PDF of the full Story, promots & dialogues.", chat);
+    expect(r.kind === "found" && r.id).toBe("a2");
+  });
 });
