@@ -298,6 +298,7 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
         <div className="group relative w-full">
           <div className="space-y-3">
             {/* Finished-task summary ("Worked for Ns") sits above the results, expandable to the real steps. */}
+            {!isUser && message.memoryUpdated && <a href="/settings/memory" className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><Brain className="size-3.5" aria-hidden />Memory updated</a>}
             {!message.job && message.activity && <ActivityRow activity={{ ...message.activity, failed: message.activity.failed || message.deep?.stage === "failed", detail: message.deep?.detail ?? message.activity.detail }} />}
             {!message.job && !message.activity && message.deep && (message.deep.stage === "done" || message.deep.stage === "failed") && <ActivityRow activity={{ seconds: message.deep.seconds ?? 0, steps: [], failed: message.deep.stage === "failed", detail: message.deep.detail }} />}
             {!message.job && !message.activity && !message.deep && <ActivityRow activity={{ seconds: fallbackSeconds, steps: [] }} />}
