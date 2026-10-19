@@ -13,7 +13,75 @@ const view = (status: string): JobView => ({
 const respond = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
 
 describe("runJob polling", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+  it.each(["start", "retry"])("uses one %s poll and resolves on its first terminal observation", async (action) => {
+    vi.useFakeTimers();
+    let gets = 0;
+    vi.stubGlobal("fetch", vi.fn(async (_url: unknown, init?: RequestInit) => {
+      if (init?.method === "POST") return respond({ job: view("processing") });
+      gets++;
+      return respond({ job: view(gets === 2 ? "completed" : "processing") });
+    }));
+    let final: JobView | undefined;
+    const pending = (action === "start" ? runJob("long_context", {}, () => undefined, "job-1") : retryJob("job-1", () => undefined)).then((j) => { final = j; });
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(gets).toBe(1);
+    await vi.advanceTimersByTimeAsync(800);
+    expect(gets).toBe(1); // former second loop fired at 2000 ms
+    expect(final).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(400);
+    await pending;
+    expect(final?.status).toBe("completed");
+    expect(gets).toBe(2);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps a terminal poll when a delayed POST returns an older running status", async () => {
+    vi.useFakeTimers();
+    let resolvePost: (r: Response) => void = () => undefined;
+    const post = new Promise<Response>((resolve) => { resolvePost = resolve; });
+    const updates: string[] = [];
+    vi.stubGlobal("fetch", vi.fn((_url: unknown, init?: RequestInit) => init?.method === "POST" ? post : Promise.resolve(respond({ job: view("completed") }))));
+    const pending = runJob("long_context", {}, (j) => updates.push(j.status), "job-1");
+    await vi.advanceTimersByTimeAsync(1200);
+    resolvePost(respond({ job: view("processing") }));
+    expect((await pending).status).toBe("completed");
+    expect(updates).toEqual(["completed"]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not overlap a slow status read with the next poll", async () => {
+    vi.useFakeTimers();
+    let resolveRead: (r: Response) => void = () => undefined;
+    let gets = 0;
+    vi.stubGlobal("fetch", vi.fn((_url: unknown, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve(respond({ job: view("processing") }));
+      gets++;
+      return new Promise<Response>((resolve) => { resolveRead = resolve; });
+    }));
+    const pending = runJob("long_context", {}, () => undefined, "job-1");
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(gets).toBe(1);
+    resolveRead(respond({ job: view("completed") }));
+    expect((await pending).status).toBe("completed");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps simultaneous jobs and their terminal results independent", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return respond({ job: { ...view("processing"), id: JSON.parse(String(init.body)).id } });
+      const id = url.split("/").at(-1);
+      return respond({ job: { ...view(id === "job-a" ? "completed" : "failed"), id } });
+    }));
+    const a = runJob("long_context", {}, () => undefined, "job-a");
+    const b = runJob("long_context", {}, () => undefined, "job-b");
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(await a).toMatchObject({ id: "job-a", status: "completed" });
+    expect(await b).toMatchObject({ id: "job-b", status: "failed" });
+    expect(vi.getTimerCount()).toBe(0);
+  });
 
   it("keeps polling when the start response is still running, until the job completes", async () => {
     const updates: string[] = [];
