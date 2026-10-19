@@ -97,6 +97,7 @@ import { Route as VerifySplatRouteImport } from './routes/verify.$'
 import { Route as VideosIndexRouteImport } from './routes/videos.index'
 import { Route as VideosVideoChatIdRouteImport } from './routes/videos.$videoChatId'
 import { Route as ApiArtifactsArtifactIdRouteImport } from './routes/api/artifacts.$artifactId'
+import { Route as ApiInternalSandboxCleanupRouteImport } from './routes/api/internal.sandbox-cleanup'
 import { Route as ApiInternalStoryRunRouteImport } from './routes/api/internal.story-run'
 import { Route as ApiJobsJobIdRouteImport } from './routes/api/jobs.$jobId'
 import { Route as ApiOauthProviderRouteImport } from './routes/api/oauth.$provider'
@@ -550,6 +551,12 @@ const ApiArtifactsArtifactIdRoute = ApiArtifactsArtifactIdRouteImport.update({
   path: '/api/artifacts/$artifactId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInternalSandboxCleanupRoute =
+  ApiInternalSandboxCleanupRouteImport.update({
+    id: '/api/internal/sandbox-cleanup',
+    path: '/api/internal/sandbox-cleanup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiInternalStoryRunRoute = ApiInternalStoryRunRouteImport.update({
   id: '/api/internal/story-run',
   path: '/api/internal/story-run',
@@ -697,6 +704,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/videos/': typeof VideosIndexRoute
   '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/internal/sandbox-cleanup': typeof ApiInternalSandboxCleanupRoute
   '/api/internal/story-run': typeof ApiInternalStoryRunRoute
   '/api/jobs/$jobId': typeof ApiJobsJobIdRoute
   '/api/oauth/$provider': typeof ApiOauthProviderRoute
@@ -795,6 +803,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/videos': typeof VideosIndexRoute
   '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/internal/sandbox-cleanup': typeof ApiInternalSandboxCleanupRoute
   '/api/internal/story-run': typeof ApiInternalStoryRunRoute
   '/api/jobs/$jobId': typeof ApiJobsJobIdRoute
   '/api/oauth/$provider': typeof ApiOauthProviderRoute
@@ -897,6 +906,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/videos/': typeof VideosIndexRoute
   '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/internal/sandbox-cleanup': typeof ApiInternalSandboxCleanupRoute
   '/api/internal/story-run': typeof ApiInternalStoryRunRoute
   '/api/jobs/$jobId': typeof ApiJobsJobIdRoute
   '/api/oauth/$provider': typeof ApiOauthProviderRoute
@@ -1000,6 +1010,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/videos/'
     | '/api/artifacts/$artifactId'
+    | '/api/internal/sandbox-cleanup'
     | '/api/internal/story-run'
     | '/api/jobs/$jobId'
     | '/api/oauth/$provider'
@@ -1098,6 +1109,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/videos'
     | '/api/artifacts/$artifactId'
+    | '/api/internal/sandbox-cleanup'
     | '/api/internal/story-run'
     | '/api/jobs/$jobId'
     | '/api/oauth/$provider'
@@ -1199,6 +1211,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/videos/'
     | '/api/artifacts/$artifactId'
+    | '/api/internal/sandbox-cleanup'
     | '/api/internal/story-run'
     | '/api/jobs/$jobId'
     | '/api/oauth/$provider'
@@ -1262,6 +1275,7 @@ export interface RootRouteChildren {
   ProjectsIndexRoute: typeof ProjectsIndexRoute
   VideosIndexRoute: typeof VideosIndexRoute
   ApiArtifactsArtifactIdRoute: typeof ApiArtifactsArtifactIdRoute
+  ApiInternalSandboxCleanupRoute: typeof ApiInternalSandboxCleanupRoute
   ApiInternalStoryRunRoute: typeof ApiInternalStoryRunRoute
   ApiOauthProviderRoute: typeof ApiOauthProviderRoute
   ApiStorageDriveRoute: typeof ApiStorageDriveRoute
@@ -1885,6 +1899,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiArtifactsArtifactIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/sandbox-cleanup': {
+      id: '/api/internal/sandbox-cleanup'
+      path: '/api/internal/sandbox-cleanup'
+      fullPath: '/api/internal/sandbox-cleanup'
+      preLoaderRoute: typeof ApiInternalSandboxCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/internal/story-run': {
       id: '/api/internal/story-run'
       path: '/api/internal/story-run'
@@ -2190,6 +2211,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectsIndexRoute: ProjectsIndexRoute,
   VideosIndexRoute: VideosIndexRoute,
   ApiArtifactsArtifactIdRoute: ApiArtifactsArtifactIdRoute,
+  ApiInternalSandboxCleanupRoute: ApiInternalSandboxCleanupRoute,
   ApiInternalStoryRunRoute: ApiInternalStoryRunRoute,
   ApiOauthProviderRoute: ApiOauthProviderRoute,
   ApiStorageDriveRoute: ApiStorageDriveRoute,

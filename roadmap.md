@@ -236,3 +236,8 @@ Spec: user-uploaded VISION memory/output/artifact/activity integration doc (5 ta
 - [ ] Durable owner-private cross-run checkpoints and interrupted-delivery reconciliation.
 - [ ] Deploy and verify three authenticated live passes with independent ≥90% reviews — requires explicit deployment/workflow authorization.
 - [x] Story generation runs on Cloudflare (Free plan: one AI call per queue run, verified live 2026-10-19). Was: User requirement (2026-10-19 07:38): story generation must run on Cloudflare, not GitHub Actions. Current pipeline dispatches runtime_task jobs to GitHub runners; moving execution onto Cloudflare is an architecture change needing backend deployment (which this workspace cannot perform). Clarify scope with user before redesign.
+
+## Current request — Prompt-generation sandbox database
+- [x] Removed Google credentials; Cloud Run dropped.
+- [x] Migration 0005 (12 logical tables, reuses generation_jobs/generation_events) applied to live vision-sandbox; workspace module, hourly cleanup cron, 10 tests pass.
+- [ ] Cleanup cron activates only after the next `bun run deploy`. Wiring the workspace into the live prompt pipeline is a future step. 100-user capacity not load-tested.

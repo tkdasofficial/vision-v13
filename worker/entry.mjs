@@ -17,6 +17,16 @@ export default {
     return app.fetch(request, env, ctx);
   },
 
+  // Cron: vision-sandbox maintenance (expire stalled prompt jobs, delete due temporary workspaces).
+  async scheduled(_event, env, ctx) {
+    if (!env.SIGNING_KEY) return;
+    const res = await app.fetch(new Request("https://cron.internal/api/internal/sandbox-cleanup", {
+      method: "POST",
+      headers: { [QUEUE_HEADER]: env.SIGNING_KEY },
+    }), env, ctx);
+    console.log(JSON.stringify({ tag: "[sandbox-cleanup]", status: res.status }));
+  },
+
   async queue(batch, env, ctx) {
     for (const msg of batch.messages) {
       const jobId = msg.body && typeof msg.body.jobId === "string" ? msg.body.jobId : "";
