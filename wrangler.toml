@@ -44,6 +44,10 @@ binding = "SANDBOX_DB"
 database_name = "vision-sandbox"
 database_id = "4d8098d8-e148-46ea-9e79-b4d35c148c8f"
 
+# Hourly vision-sandbox maintenance: expires stalled prompt jobs and deletes due temporary workspaces.
+[triggers]
+crons = ["17 * * * *"]
+
 # CPU limit: Workers Free plan (no [limits] cpu_ms). Story queue runs make one non-streaming AI call each, so every run fits the free CPU budget.
 
 # Story generation runs as resumable Cloudflare Queue runs (never GitHub Actions).
