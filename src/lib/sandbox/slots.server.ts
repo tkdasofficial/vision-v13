@@ -61,12 +61,13 @@ export async function claimFixedSlot(userId: string, jobId: string, slotId: 1 | 
 /** Atomically claims up to `needed` free prompt slots, one UPDATE per slot to stay race-safe. */
 export async function claimPromptSlots(userId: string, jobId: string, needed: number, db: SandboxDb = sandboxDb): Promise<number[]> {
   await ensureSlots(db);
-  const all: Slot[] = await db("SELECT slot_id, slot_type, status FROM generation_slots ORDER BY slot_id");
   const mine: Slot[] = await db("SELECT slot_id, slot_type, status FROM generation_slots WHERE user_id = ? AND job_id = ? AND slot_type = 'prompt'", [userId, jobId]);
   const already = mine.length;
   const want = Math.max(0, needed - already);
-  const candidates = pickFreePromptSlots(all, want);
   const claimed: number[] = mine.map((s) => s.slot_id).sort((a, b) => a - b);
+  if (want === 0) return claimed;
+  const all: Slot[] = await db("SELECT slot_id, slot_type, status FROM generation_slots ORDER BY slot_id");
+  const candidates = pickFreePromptSlots(all, want);
   for (const slotId of candidates) {
     const rows = await db(
       "UPDATE generation_slots SET user_id = ?, job_id = ?, prompt_index = ?, status = 'claimed', repair_attempts = 0, findings = NULL, error_code = NULL, updated_at = ? WHERE slot_id = ? AND status = 'free' RETURNING slot_id",

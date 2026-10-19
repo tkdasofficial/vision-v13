@@ -1,5 +1,11 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Reduce unnecessary prompt-generation latency
+- [x] Inspect queue configuration, polling, retries and resumable database work; targeted baseline: 81 tests passed.
+- [x] Remove duplicate polling and redundant owner-slot reads without changing generation settings or safety waits; accepted-scene stage writes also skipped.
+- [x] Targeted timing, retry, resume, isolation, validation, permanent reply and cleanup regressions pass (84 tests); full post-change comparison recorded in docs/generation-latency-review-2026-10-19.md.
+- [ ] Comparable authenticated five-scene before/after timings and deployment — requires usable access to the same test account; old password is unavailable and must not be reused.
+
 ## Current request — Results stuck on "Executing..."
 - [x] Root cause: story jobs ran inside request background time, which Cloudflare cuts short; dead jobs stayed "running" forever.
 - [x] Story jobs now run on Cloudflare Queue "vision-story" (worker/entry.mjs consumer, resumable 11-minute runs, heartbeat, stale jobs failed + slots freed); below-90 scene regeneration no longer rejected as "slot unavailable". Deployed with -c wrangler.toml.

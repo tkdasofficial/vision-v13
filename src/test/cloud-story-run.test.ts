@@ -150,6 +150,8 @@ describe("Workers Free plan: one provider call per queue run", () => {
     // blueprint, story, scene1, scene2 draft, scene2 regeneration — each exactly once.
     expect(s.calls).toEqual(["blueprint", "story", "scene1#1", "scene2#1", "scene2#2"]);
     expect(runs).toBe(s.calls.length);
+    const firstSceneStages = h.d1Calls.filter((c) => c.sql.startsWith("UPDATE runtime_jobs SET stage") && c.params[0] === "writing_scene_1");
+    expect(firstSceneStages).toHaveLength(2); // pre-call yield + generation; not replayed after acceptance
     expect(h.d1Calls.some((c) => c.sql.includes("status = 'uploaded'"))).toBe(true);
   });
 });

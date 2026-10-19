@@ -88,6 +88,18 @@ describe("slot store (in-memory D1 semantics)", () => {
     const again = await store.claimPromptSlots("u2", "j2", 5, db as any);
     expect(again).toHaveLength(5);
   });
+  it("resumes owned prompt slots with one owner-scoped read and no free-slot scan", async () => {
+    const { db } = fakeDb();
+    const calls: { sql: string; params: unknown[] }[] = [];
+    const tracked = async (sql: string, params: unknown[] = []) => { calls.push({ sql, params }); return db(sql, params); };
+    const claimed = await store.claimPromptSlots("u1", "j1", 5, tracked);
+    calls.length = 0;
+    expect(await store.claimPromptSlots("u1", "j1", 5, tracked)).toEqual(claimed);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].params).toEqual(["u1", "j1"]);
+    const foreign = await store.claimPromptSlots("u2", "j2", 5, tracked);
+    expect(foreign.some((slot) => claimed.includes(slot))).toBe(false);
+  });
 });
 
 describe("slot runner flow", () => {

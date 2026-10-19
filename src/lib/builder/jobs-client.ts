@@ -21,19 +21,37 @@ export async function listJobs(sessionId?: string): Promise<JobView[]> {
   return body.jobs;
 }
 
+/** One status watcher per submission, including while POST is outstanding. */
+function watchJob(id: string, onUpdate: (j: JobView) => void) {
+  let stopped = false;
+  let latest: JobView | null = null;
+  let deadline = Number.POSITIVE_INFINITY;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let settle: (j: JobView | null) => void = () => undefined;
+  const result = new Promise<JobView | null>((resolve) => { settle = resolve; });
+  const stop = () => { stopped = true; clearTimeout(timer); settle(latest); };
+  const accept = (j: JobView) => {
+    if (stopped) return;
+    latest = j;
+    onUpdate(j);
+    if (isTerminal(j.status)) stop();
+  };
+  const tick = async () => {
+    if (stopped) return;
+    const j = await fetchJob(id).catch(() => null);
+    if (j) accept(j);
+    if (stopped) return;
+    if (Date.now() >= deadline) { stop(); return; }
+    timer = setTimeout(() => { void tick(); }, 1200);
+  };
+  timer = setTimeout(() => { void tick(); }, 1200);
+  return { accept, stop, latest: () => latest, wait: () => { deadline = Date.now() + 45 * 60_000; return result; } };
+}
+
 /** Starts a job; `onUpdate` receives each polled status while the server works. */
 export async function runJob(type: JobType, payload: { input?: unknown; file?: File; files?: File[]; prompt?: string; sessionId?: string | null }, onUpdate: (j: JobView) => void, existingId?: string): Promise<JobView> {
   const id = existingId ?? crypto.randomUUID();
-  let done = false;
-  const poll = async () => {
-    while (!done) {
-      await new Promise((r) => setTimeout(r, 1200));
-      if (done) break;
-      const j = await fetchJob(id).catch(() => null);
-      if (j && !done) { onUpdate(j); if (isTerminal(j.status)) break; }
-    }
-  };
-  void poll();
+  const watcher = watchJob(id, onUpdate);
   try {
     let res: Response;
     if (payload.files) {
@@ -51,30 +69,17 @@ export async function runJob(type: JobType, payload: { input?: unknown; file?: F
       res = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, type, input: payload.input, sessionId: payload.sessionId ?? undefined }), credentials: "include" });
     }
     const job: JobView = (await json(res)).job;
-    onUpdate(job);
-    // Slow tasks return while still running (the server finishes them in the background):
-    // keep polling until a terminal state instead of freezing on "running".
-    if (!isTerminal(job.status)) {
-      const deadline = Date.now() + 45 * 60_000;
-      let j: JobView | null = job;
-      while (j && !isTerminal(j.status) && Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 2000));
-        // A failed read is not a missing job: preserve the last accepted state.
-        j = await fetchJob(id).catch(() => j);
-        if (j) onUpdate(j);
-      }
-      done = true;
-      return j ?? job;
-    }
-    done = true;
-    return job;
+    // A terminal poll may precede a stale POST reply. Never regress it to running.
+    watcher.accept(job);
+    return (await watcher.wait()) ?? job;
   } catch (e) {
     // The request may have been cut off while the job kept running; trust the stored state.
-    const j = await fetchJob(id).catch(() => null);
-    done = true;
-    if (j) { onUpdate(j); return j; }
+    const latest = watcher.latest();
+    if (latest && isTerminal(latest.status)) return latest;
+    const j = await fetchJob(id).catch(() => latest);
+    if (j) { watcher.accept(j); return j; }
     throw e;
-  }
+  } finally { watcher.stop(); }
 }
 
 export async function cancelJob(id: string) {
@@ -83,23 +88,12 @@ export async function cancelJob(id: string) {
 
 export async function retryJob(id: string, onUpdate: (j: JobView) => void): Promise<JobView> {
   const newId = crypto.randomUUID();
-  let done = false;
-  void (async () => { while (!done) { await new Promise((r) => setTimeout(r, 1200)); const j = await fetchJob(newId).catch(() => null); if (j && !done) onUpdate(j); } })();
+  const watcher = watchJob(newId, onUpdate);
   try {
     const job: JobView = (await json(await fetch(`/api/jobs/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "retry", newId }), credentials: "include" }))).job;
-    onUpdate(job);
-    if (!isTerminal(job.status)) {
-      const deadline = Date.now() + 45 * 60_000;
-      let j: JobView | null = job;
-      while (j && !isTerminal(j.status) && Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 2000));
-        j = await fetchJob(newId).catch(() => j);
-        if (j) onUpdate(j);
-      }
-      return j ?? job;
-    }
-    return job;
-  } finally { done = true; }
+    watcher.accept(job);
+    return (await watcher.wait()) ?? job;
+  } finally { watcher.stop(); }
 }
 
 export const downloadUrl = (artifactId: string) => `/api/artifacts/${artifactId}`;
