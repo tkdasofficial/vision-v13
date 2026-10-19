@@ -1,6 +1,6 @@
 -- vision-sandbox: per-job prompt-generation workspace (additive; no drops or renames).
 -- Reuses: generation_jobs (extended below; id = job_id) and generation_events (= job_events).
--- Rollback: db/migrations/0005_prompt_workspace.down.sql
+-- Rollback: db/rollback/0005_prompt_workspace.down.sql
 -- Apply with: npx wrangler d1 migrations apply vision-sandbox --remote
 
 -- Table 1: generation_jobs (reused). Existing `status` keeps serving the Long Context runner;
