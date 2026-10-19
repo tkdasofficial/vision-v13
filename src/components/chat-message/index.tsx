@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo, forwardRef } from "react";
 import type { ChatMessage as ChatMessageType, DeepStage } from "@/lib/types";
-import { Copy, Check, ChevronRight, Volume2, VolumeX, Share2, MoreHorizontal, Flag, Trash2, GitBranch } from "lucide-react";
+import { Copy, Check, ChevronRight, Volume2, VolumeX, Share2, MoreHorizontal, Flag, Trash2, GitBranch, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MarkdownReply from "@/components/chat/markdown-reply";
 import { useToast } from "@/hooks/use-toast";
