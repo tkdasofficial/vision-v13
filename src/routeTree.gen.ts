@@ -10,33 +10,1261 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ChatRouteImport } from './routes/chat'
+import { Route as DrawerRouteImport } from './routes/drawer'
+import { Route as EnterpriseRouteImport } from './routes/enterprise'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as GettingStartedRouteImport } from './routes/getting-started'
+import { Route as GuideRouteImport } from './routes/guide'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as LibraryRouteImport } from './routes/library'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MailRouteImport } from './routes/mail'
+import { Route as ProspectingRouteImport } from './routes/prospecting'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminAnnouncementsRouteImport } from './routes/admin.announcements'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminBackgroundTasksRouteImport } from './routes/admin.background-tasks'
+import { Route as AdminChatSessionsRouteImport } from './routes/admin.chat-sessions'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as AdminFeatureFlagsRouteImport } from './routes/admin.feature-flags'
+import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
+import { Route as AdminSubscriptionsRouteImport } from './routes/admin.subscriptions'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
+import { Route as AdminSystemRouteImport } from './routes/admin.system'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AiProviderRouteImport } from './routes/ai.$provider'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiChatStatusRouteImport } from './routes/api/chat-status'
+import { Route as ApiFilesRouteImport } from './routes/api/files'
+import { Route as ApiJobsRouteImport } from './routes/api/jobs'
+import { Route as ApiSandboxGenerationsRouteImport } from './routes/api/sandbox-generations'
+import { Route as AppSplatRouteImport } from './routes/app.$'
+import { Route as AuthForgetPasswordRouteImport } from './routes/auth.forget-password'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
+import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AuthRegisterRouteImport } from './routes/auth.register'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as AuthSignupRouteImport } from './routes/auth.signup'
+import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
+import { Route as BillingPlansRouteImport } from './routes/billing.plans'
+import { Route as ChatIndexRouteImport } from './routes/chat.index'
+import { Route as ChatChatIdRouteImport } from './routes/chat.$chatId'
+import { Route as ChatIncognitoRouteImport } from './routes/chat.incognito'
+import { Route as DocsSplatRouteImport } from './routes/docs.$'
+import { Route as DocumentsDocIdRouteImport } from './routes/documents.$docId'
+import { Route as EnterpriseEmailRouteImport } from './routes/enterprise.email'
+import { Route as EnterpriseGettingStartedRouteImport } from './routes/enterprise.getting-started'
+import { Route as EnterpriseLoginRouteImport } from './routes/enterprise.login'
+import { Route as EnterpriseVerifyRouteImport } from './routes/enterprise.verify'
+import { Route as GithubCallbackRouteImport } from './routes/github.callback'
+import { Route as GoogleCallbackRouteImport } from './routes/google.callback'
+import { Route as HelpFaqRouteImport } from './routes/help.faq'
+import { Route as ImagesIndexRouteImport } from './routes/images.index'
+import { Route as ImagesImageChatIdRouteImport } from './routes/images.$imageChatId'
+import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
+import { Route as LegalTermsRouteImport } from './routes/legal.terms'
+import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
+import { Route as ProjectsNewRouteImport } from './routes/projects.new'
+import { Route as RuntimeSplatRouteImport } from './routes/runtime.$'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsAboutRouteImport } from './routes/settings.about'
+import { Route as SettingsAccessibilityRouteImport } from './routes/settings.accessibility'
+import { Route as SettingsAiRouteImport } from './routes/settings.ai'
+import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
+import { Route as SettingsChatRouteImport } from './routes/settings.chat'
+import { Route as SettingsLanguageRouteImport } from './routes/settings.language'
+import { Route as SettingsNotificationsRouteImport } from './routes/settings.notifications'
+import { Route as SettingsPrivacyRouteImport } from './routes/settings.privacy'
+import { Route as StudioImagesRouteImport } from './routes/studio.images'
+import { Route as StudioVideosRouteImport } from './routes/studio.videos'
+import { Route as VerifySplatRouteImport } from './routes/verify.$'
+import { Route as VideosIndexRouteImport } from './routes/videos.index'
+import { Route as VideosVideoChatIdRouteImport } from './routes/videos.$videoChatId'
+import { Route as ApiArtifactsArtifactIdRouteImport } from './routes/api/artifacts.$artifactId'
+import { Route as ApiInternalStoryRunRouteImport } from './routes/api/internal.story-run'
+import { Route as ApiJobsJobIdRouteImport } from './routes/api/jobs.$jobId'
+import { Route as ApiOauthProviderRouteImport } from './routes/api/oauth.$provider'
+import { Route as ApiSandboxGenerationsJobIdRouteImport } from './routes/api/sandbox-generations.$jobId'
+import { Route as ApiStorageDriveRouteImport } from './routes/api/storage.drive'
+import { Route as AuthGithubCallbackRouteImport } from './routes/auth.github.callback'
+import { Route as AuthGithubStartRouteImport } from './routes/auth.github.start'
+import { Route as AuthGoogleCallbackRouteImport } from './routes/auth.google.callback'
+import { Route as AuthGoogleStartRouteImport } from './routes/auth.google.start'
+import { Route as SettingsSecurityIndexRouteImport } from './routes/settings.security.index'
+import { Route as SettingsSecurityPasswordRouteImport } from './routes/settings.security.password'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DrawerRoute = DrawerRouteImport.update({
+  id: '/drawer',
+  path: '/drawer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnterpriseRoute = EnterpriseRouteImport.update({
+  id: '/enterprise',
+  path: '/enterprise',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GettingStartedRoute = GettingStartedRouteImport.update({
+  id: '/getting-started',
+  path: '/getting-started',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuideRoute = GuideRouteImport.update({
+  id: '/guide',
+  path: '/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MailRoute = MailRouteImport.update({
+  id: '/mail',
+  path: '/mail',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProspectingRoute = ProspectingRouteImport.update({
+  id: '/prospecting',
+  path: '/prospecting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBackgroundTasksRoute = AdminBackgroundTasksRouteImport.update({
+  id: '/background-tasks',
+  path: '/background-tasks',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminChatSessionsRoute = AdminChatSessionsRouteImport.update({
+  id: '/chat-sessions',
+  path: '/chat-sessions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFeatureFlagsRoute = AdminFeatureFlagsRouteImport.update({
+  id: '/feature-flags',
+  path: '/feature-flags',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSystemRoute = AdminSystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AiProviderRoute = AiProviderRouteImport.update({
+  id: '/ai/$provider',
+  path: '/ai/$provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatStatusRoute = ApiChatStatusRouteImport.update({
+  id: '/api/chat-status',
+  path: '/api/chat-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesRoute = ApiFilesRouteImport.update({
+  id: '/api/files',
+  path: '/api/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiJobsRoute = ApiJobsRouteImport.update({
+  id: '/api/jobs',
+  path: '/api/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSandboxGenerationsRoute = ApiSandboxGenerationsRouteImport.update({
+  id: '/api/sandbox-generations',
+  path: '/api/sandbox-generations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppSplatRoute = AppSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => AppRoute,
+} as any)
+const AuthForgetPasswordRoute = AuthForgetPasswordRouteImport.update({
+  id: '/forget-password',
+  path: '/forget-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthVerifyRoute = AuthVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => AuthRoute,
+} as any)
+const BillingPlansRoute = BillingPlansRouteImport.update({
+  id: '/billing/plans',
+  path: '/billing/plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatIndexRoute = ChatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatChatIdRoute = ChatChatIdRouteImport.update({
+  id: '/$chatId',
+  path: '/$chatId',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatIncognitoRoute = ChatIncognitoRouteImport.update({
+  id: '/incognito',
+  path: '/incognito',
+  getParentRoute: () => ChatRoute,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/docs/$',
+  path: '/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsDocIdRoute = DocumentsDocIdRouteImport.update({
+  id: '/documents/$docId',
+  path: '/documents/$docId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnterpriseEmailRoute = EnterpriseEmailRouteImport.update({
+  id: '/email',
+  path: '/email',
+  getParentRoute: () => EnterpriseRoute,
+} as any)
+const EnterpriseGettingStartedRoute =
+  EnterpriseGettingStartedRouteImport.update({
+    id: '/getting-started',
+    path: '/getting-started',
+    getParentRoute: () => EnterpriseRoute,
+  } as any)
+const EnterpriseLoginRoute = EnterpriseLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => EnterpriseRoute,
+} as any)
+const EnterpriseVerifyRoute = EnterpriseVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => EnterpriseRoute,
+} as any)
+const GithubCallbackRoute = GithubCallbackRouteImport.update({
+  id: '/github/callback',
+  path: '/github/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoogleCallbackRoute = GoogleCallbackRouteImport.update({
+  id: '/google/callback',
+  path: '/google/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpFaqRoute = HelpFaqRouteImport.update({
+  id: '/help/faq',
+  path: '/help/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImagesIndexRoute = ImagesIndexRouteImport.update({
+  id: '/images/',
+  path: '/images/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImagesImageChatIdRoute = ImagesImageChatIdRouteImport.update({
+  id: '/images/$imageChatId',
+  path: '/images/$imageChatId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
+  id: '/legal/privacy',
+  path: '/legal/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalTermsRoute = LegalTermsRouteImport.update({
+  id: '/legal/terms',
+  path: '/legal/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsNewRoute = ProjectsNewRouteImport.update({
+  id: '/projects/new',
+  path: '/projects/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RuntimeSplatRoute = RuntimeSplatRouteImport.update({
+  id: '/runtime/$',
+  path: '/runtime/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAboutRoute = SettingsAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAccessibilityRoute = SettingsAccessibilityRouteImport.update({
+  id: '/accessibility',
+  path: '/accessibility',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAiRoute = SettingsAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsChatRoute = SettingsChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsLanguageRoute = SettingsLanguageRouteImport.update({
+  id: '/language',
+  path: '/language',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsPrivacyRoute = SettingsPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const StudioImagesRoute = StudioImagesRouteImport.update({
+  id: '/studio/images',
+  path: '/studio/images',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioVideosRoute = StudioVideosRouteImport.update({
+  id: '/studio/videos',
+  path: '/studio/videos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifySplatRoute = VerifySplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => VerifyRoute,
+} as any)
+const VideosIndexRoute = VideosIndexRouteImport.update({
+  id: '/videos/',
+  path: '/videos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideosVideoChatIdRoute = VideosVideoChatIdRouteImport.update({
+  id: '/videos/$videoChatId',
+  path: '/videos/$videoChatId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiArtifactsArtifactIdRoute = ApiArtifactsArtifactIdRouteImport.update({
+  id: '/api/artifacts/$artifactId',
+  path: '/api/artifacts/$artifactId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInternalStoryRunRoute = ApiInternalStoryRunRouteImport.update({
+  id: '/api/internal/story-run',
+  path: '/api/internal/story-run',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiJobsJobIdRoute = ApiJobsJobIdRouteImport.update({
+  id: '/$jobId',
+  path: '/$jobId',
+  getParentRoute: () => ApiJobsRoute,
+} as any)
+const ApiOauthProviderRoute = ApiOauthProviderRouteImport.update({
+  id: '/api/oauth/$provider',
+  path: '/api/oauth/$provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSandboxGenerationsJobIdRoute =
+  ApiSandboxGenerationsJobIdRouteImport.update({
+    id: '/$jobId',
+    path: '/$jobId',
+    getParentRoute: () => ApiSandboxGenerationsRoute,
+  } as any)
+const ApiStorageDriveRoute = ApiStorageDriveRouteImport.update({
+  id: '/api/storage/drive',
+  path: '/api/storage/drive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
+  id: '/github/callback',
+  path: '/github/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthGithubStartRoute = AuthGithubStartRouteImport.update({
+  id: '/github/start',
+  path: '/github/start',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthGoogleCallbackRoute = AuthGoogleCallbackRouteImport.update({
+  id: '/google/callback',
+  path: '/google/callback',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthGoogleStartRoute = AuthGoogleStartRouteImport.update({
+  id: '/google/start',
+  path: '/google/start',
+  getParentRoute: () => AuthRoute,
+} as any)
+const SettingsSecurityIndexRoute = SettingsSecurityIndexRouteImport.update({
+  id: '/security/',
+  path: '/security/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsSecurityPasswordRoute =
+  SettingsSecurityPasswordRouteImport.update({
+    id: '/security/password',
+    path: '/security/password',
+    getParentRoute: () => SettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/auth': typeof AuthRouteWithChildren
+  '/chat': typeof ChatRouteWithChildren
+  '/drawer': typeof DrawerRoute
+  '/enterprise': typeof EnterpriseRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/getting-started': typeof GettingStartedRoute
+  '/guide': typeof GuideRoute
+  '/health': typeof HealthRoute
+  '/inbox': typeof InboxRoute
+  '/integrations': typeof IntegrationsRoute
+  '/library': typeof LibraryRoute
+  '/login': typeof LoginRoute
+  '/mail': typeof MailRoute
+  '/prospecting': typeof ProspectingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/search': typeof SearchRoute
+  '/settings': typeof SettingsRouteWithChildren
+  '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
+  '/verify': typeof VerifyRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/background-tasks': typeof AdminBackgroundTasksRoute
+  '/admin/chat-sessions': typeof AdminChatSessionsRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/feature-flags': typeof AdminFeatureFlagsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/ai/$provider': typeof AiProviderRoute
+  '/api/chat': typeof ApiChatRoute
+  '/api/chat-status': typeof ApiChatStatusRoute
+  '/api/files': typeof ApiFilesRoute
+  '/api/jobs': typeof ApiJobsRouteWithChildren
+  '/api/sandbox-generations': typeof ApiSandboxGenerationsRouteWithChildren
+  '/app/$': typeof AppSplatRoute
+  '/auth/forget-password': typeof AuthForgetPasswordRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/auth/verify': typeof AuthVerifyRoute
+  '/billing/plans': typeof BillingPlansRoute
+  '/chat/$chatId': typeof ChatChatIdRoute
+  '/chat/incognito': typeof ChatIncognitoRoute
+  '/docs/$': typeof DocsSplatRoute
+  '/documents/$docId': typeof DocumentsDocIdRoute
+  '/enterprise/email': typeof EnterpriseEmailRoute
+  '/enterprise/getting-started': typeof EnterpriseGettingStartedRoute
+  '/enterprise/login': typeof EnterpriseLoginRoute
+  '/enterprise/verify': typeof EnterpriseVerifyRoute
+  '/github/callback': typeof GithubCallbackRoute
+  '/google/callback': typeof GoogleCallbackRoute
+  '/help/faq': typeof HelpFaqRoute
+  '/images/$imageChatId': typeof ImagesImageChatIdRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/new': typeof ProjectsNewRoute
+  '/runtime/$': typeof RuntimeSplatRoute
+  '/settings/about': typeof SettingsAboutRoute
+  '/settings/accessibility': typeof SettingsAccessibilityRoute
+  '/settings/ai': typeof SettingsAiRoute
+  '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/chat': typeof SettingsChatRoute
+  '/settings/language': typeof SettingsLanguageRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/privacy': typeof SettingsPrivacyRoute
+  '/studio/images': typeof StudioImagesRoute
+  '/studio/videos': typeof StudioVideosRoute
+  '/verify/$': typeof VerifySplatRoute
+  '/videos/$videoChatId': typeof VideosVideoChatIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/chat/': typeof ChatIndexRoute
+  '/images/': typeof ImagesIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/videos/': typeof VideosIndexRoute
+  '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/internal/story-run': typeof ApiInternalStoryRunRoute
+  '/api/jobs/$jobId': typeof ApiJobsJobIdRoute
+  '/api/oauth/$provider': typeof ApiOauthProviderRoute
+  '/api/sandbox-generations/$jobId': typeof ApiSandboxGenerationsJobIdRoute
+  '/api/storage/drive': typeof ApiStorageDriveRoute
+  '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/auth/github/start': typeof AuthGithubStartRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/auth/google/start': typeof AuthGoogleStartRoute
+  '/settings/security/password': typeof SettingsSecurityPasswordRoute
+  '/settings/security/': typeof SettingsSecurityIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/app': typeof AppRouteWithChildren
+  '/auth': typeof AuthRouteWithChildren
+  '/drawer': typeof DrawerRoute
+  '/enterprise': typeof EnterpriseRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/getting-started': typeof GettingStartedRoute
+  '/guide': typeof GuideRoute
+  '/health': typeof HealthRoute
+  '/inbox': typeof InboxRoute
+  '/integrations': typeof IntegrationsRoute
+  '/library': typeof LibraryRoute
+  '/login': typeof LoginRoute
+  '/mail': typeof MailRoute
+  '/prospecting': typeof ProspectingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/search': typeof SearchRoute
+  '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
+  '/verify': typeof VerifyRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/background-tasks': typeof AdminBackgroundTasksRoute
+  '/admin/chat-sessions': typeof AdminChatSessionsRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/feature-flags': typeof AdminFeatureFlagsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/ai/$provider': typeof AiProviderRoute
+  '/api/chat': typeof ApiChatRoute
+  '/api/chat-status': typeof ApiChatStatusRoute
+  '/api/files': typeof ApiFilesRoute
+  '/api/jobs': typeof ApiJobsRouteWithChildren
+  '/api/sandbox-generations': typeof ApiSandboxGenerationsRouteWithChildren
+  '/app/$': typeof AppSplatRoute
+  '/auth/forget-password': typeof AuthForgetPasswordRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/auth/verify': typeof AuthVerifyRoute
+  '/billing/plans': typeof BillingPlansRoute
+  '/chat/$chatId': typeof ChatChatIdRoute
+  '/chat/incognito': typeof ChatIncognitoRoute
+  '/docs/$': typeof DocsSplatRoute
+  '/documents/$docId': typeof DocumentsDocIdRoute
+  '/enterprise/email': typeof EnterpriseEmailRoute
+  '/enterprise/getting-started': typeof EnterpriseGettingStartedRoute
+  '/enterprise/login': typeof EnterpriseLoginRoute
+  '/enterprise/verify': typeof EnterpriseVerifyRoute
+  '/github/callback': typeof GithubCallbackRoute
+  '/google/callback': typeof GoogleCallbackRoute
+  '/help/faq': typeof HelpFaqRoute
+  '/images/$imageChatId': typeof ImagesImageChatIdRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/new': typeof ProjectsNewRoute
+  '/runtime/$': typeof RuntimeSplatRoute
+  '/settings/about': typeof SettingsAboutRoute
+  '/settings/accessibility': typeof SettingsAccessibilityRoute
+  '/settings/ai': typeof SettingsAiRoute
+  '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/chat': typeof SettingsChatRoute
+  '/settings/language': typeof SettingsLanguageRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/privacy': typeof SettingsPrivacyRoute
+  '/studio/images': typeof StudioImagesRoute
+  '/studio/videos': typeof StudioVideosRoute
+  '/verify/$': typeof VerifySplatRoute
+  '/videos/$videoChatId': typeof VideosVideoChatIdRoute
+  '/admin': typeof AdminIndexRoute
+  '/chat': typeof ChatIndexRoute
+  '/images': typeof ImagesIndexRoute
+  '/projects': typeof ProjectsIndexRoute
+  '/settings': typeof SettingsIndexRoute
+  '/videos': typeof VideosIndexRoute
+  '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/internal/story-run': typeof ApiInternalStoryRunRoute
+  '/api/jobs/$jobId': typeof ApiJobsJobIdRoute
+  '/api/oauth/$provider': typeof ApiOauthProviderRoute
+  '/api/sandbox-generations/$jobId': typeof ApiSandboxGenerationsJobIdRoute
+  '/api/storage/drive': typeof ApiStorageDriveRoute
+  '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/auth/github/start': typeof AuthGithubStartRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/auth/google/start': typeof AuthGoogleStartRoute
+  '/settings/security/password': typeof SettingsSecurityPasswordRoute
+  '/settings/security': typeof SettingsSecurityIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/app': typeof AppRouteWithChildren
+  '/auth': typeof AuthRouteWithChildren
+  '/chat': typeof ChatRouteWithChildren
+  '/drawer': typeof DrawerRoute
+  '/enterprise': typeof EnterpriseRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/getting-started': typeof GettingStartedRoute
+  '/guide': typeof GuideRoute
+  '/health': typeof HealthRoute
+  '/inbox': typeof InboxRoute
+  '/integrations': typeof IntegrationsRoute
+  '/library': typeof LibraryRoute
+  '/login': typeof LoginRoute
+  '/mail': typeof MailRoute
+  '/prospecting': typeof ProspectingRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/search': typeof SearchRoute
+  '/settings': typeof SettingsRouteWithChildren
+  '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
+  '/verify': typeof VerifyRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/background-tasks': typeof AdminBackgroundTasksRoute
+  '/admin/chat-sessions': typeof AdminChatSessionsRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/feature-flags': typeof AdminFeatureFlagsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
+  '/admin/support': typeof AdminSupportRoute
+  '/admin/system': typeof AdminSystemRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/ai/$provider': typeof AiProviderRoute
+  '/api/chat': typeof ApiChatRoute
+  '/api/chat-status': typeof ApiChatStatusRoute
+  '/api/files': typeof ApiFilesRoute
+  '/api/jobs': typeof ApiJobsRouteWithChildren
+  '/api/sandbox-generations': typeof ApiSandboxGenerationsRouteWithChildren
+  '/app/$': typeof AppSplatRoute
+  '/auth/forget-password': typeof AuthForgetPasswordRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/auth/verify': typeof AuthVerifyRoute
+  '/billing/plans': typeof BillingPlansRoute
+  '/chat/$chatId': typeof ChatChatIdRoute
+  '/chat/incognito': typeof ChatIncognitoRoute
+  '/docs/$': typeof DocsSplatRoute
+  '/documents/$docId': typeof DocumentsDocIdRoute
+  '/enterprise/email': typeof EnterpriseEmailRoute
+  '/enterprise/getting-started': typeof EnterpriseGettingStartedRoute
+  '/enterprise/login': typeof EnterpriseLoginRoute
+  '/enterprise/verify': typeof EnterpriseVerifyRoute
+  '/github/callback': typeof GithubCallbackRoute
+  '/google/callback': typeof GoogleCallbackRoute
+  '/help/faq': typeof HelpFaqRoute
+  '/images/$imageChatId': typeof ImagesImageChatIdRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/new': typeof ProjectsNewRoute
+  '/runtime/$': typeof RuntimeSplatRoute
+  '/settings/about': typeof SettingsAboutRoute
+  '/settings/accessibility': typeof SettingsAccessibilityRoute
+  '/settings/ai': typeof SettingsAiRoute
+  '/settings/appearance': typeof SettingsAppearanceRoute
+  '/settings/chat': typeof SettingsChatRoute
+  '/settings/language': typeof SettingsLanguageRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/privacy': typeof SettingsPrivacyRoute
+  '/studio/images': typeof StudioImagesRoute
+  '/studio/videos': typeof StudioVideosRoute
+  '/verify/$': typeof VerifySplatRoute
+  '/videos/$videoChatId': typeof VideosVideoChatIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/chat/': typeof ChatIndexRoute
+  '/images/': typeof ImagesIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/videos/': typeof VideosIndexRoute
+  '/api/artifacts/$artifactId': typeof ApiArtifactsArtifactIdRoute
+  '/api/internal/story-run': typeof ApiInternalStoryRunRoute
+  '/api/jobs/$jobId': typeof ApiJobsJobIdRoute
+  '/api/oauth/$provider': typeof ApiOauthProviderRoute
+  '/api/sandbox-generations/$jobId': typeof ApiSandboxGenerationsJobIdRoute
+  '/api/storage/drive': typeof ApiStorageDriveRoute
+  '/auth/github/callback': typeof AuthGithubCallbackRoute
+  '/auth/github/start': typeof AuthGithubStartRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/auth/google/start': typeof AuthGoogleStartRoute
+  '/settings/security/password': typeof SettingsSecurityPasswordRoute
+  '/settings/security/': typeof SettingsSecurityIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/account'
+    | '/admin'
+    | '/app'
+    | '/auth'
+    | '/chat'
+    | '/drawer'
+    | '/enterprise'
+    | '/forgot-password'
+    | '/getting-started'
+    | '/guide'
+    | '/health'
+    | '/inbox'
+    | '/integrations'
+    | '/library'
+    | '/login'
+    | '/mail'
+    | '/prospecting'
+    | '/reset-password'
+    | '/search'
+    | '/settings'
+    | '/signup'
+    | '/support'
+    | '/verify'
+    | '/admin/analytics'
+    | '/admin/announcements'
+    | '/admin/audit'
+    | '/admin/background-tasks'
+    | '/admin/chat-sessions'
+    | '/admin/dashboard'
+    | '/admin/feature-flags'
+    | '/admin/notifications'
+    | '/admin/reports'
+    | '/admin/subscriptions'
+    | '/admin/support'
+    | '/admin/system'
+    | '/admin/users'
+    | '/ai/$provider'
+    | '/api/chat'
+    | '/api/chat-status'
+    | '/api/files'
+    | '/api/jobs'
+    | '/api/sandbox-generations'
+    | '/app/$'
+    | '/auth/forget-password'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/reset-password'
+    | '/auth/signup'
+    | '/auth/verify'
+    | '/billing/plans'
+    | '/chat/$chatId'
+    | '/chat/incognito'
+    | '/docs/$'
+    | '/documents/$docId'
+    | '/enterprise/email'
+    | '/enterprise/getting-started'
+    | '/enterprise/login'
+    | '/enterprise/verify'
+    | '/github/callback'
+    | '/google/callback'
+    | '/help/faq'
+    | '/images/$imageChatId'
+    | '/legal/privacy'
+    | '/legal/terms'
+    | '/projects/$projectId'
+    | '/projects/new'
+    | '/runtime/$'
+    | '/settings/about'
+    | '/settings/accessibility'
+    | '/settings/ai'
+    | '/settings/appearance'
+    | '/settings/chat'
+    | '/settings/language'
+    | '/settings/notifications'
+    | '/settings/privacy'
+    | '/studio/images'
+    | '/studio/videos'
+    | '/verify/$'
+    | '/videos/$videoChatId'
+    | '/admin/'
+    | '/chat/'
+    | '/images/'
+    | '/projects/'
+    | '/settings/'
+    | '/videos/'
+    | '/api/artifacts/$artifactId'
+    | '/api/internal/story-run'
+    | '/api/jobs/$jobId'
+    | '/api/oauth/$provider'
+    | '/api/sandbox-generations/$jobId'
+    | '/api/storage/drive'
+    | '/auth/github/callback'
+    | '/auth/github/start'
+    | '/auth/google/callback'
+    | '/auth/google/start'
+    | '/settings/security/password'
+    | '/settings/security/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/account'
+    | '/app'
+    | '/auth'
+    | '/drawer'
+    | '/enterprise'
+    | '/forgot-password'
+    | '/getting-started'
+    | '/guide'
+    | '/health'
+    | '/inbox'
+    | '/integrations'
+    | '/library'
+    | '/login'
+    | '/mail'
+    | '/prospecting'
+    | '/reset-password'
+    | '/search'
+    | '/signup'
+    | '/support'
+    | '/verify'
+    | '/admin/analytics'
+    | '/admin/announcements'
+    | '/admin/audit'
+    | '/admin/background-tasks'
+    | '/admin/chat-sessions'
+    | '/admin/dashboard'
+    | '/admin/feature-flags'
+    | '/admin/notifications'
+    | '/admin/reports'
+    | '/admin/subscriptions'
+    | '/admin/support'
+    | '/admin/system'
+    | '/admin/users'
+    | '/ai/$provider'
+    | '/api/chat'
+    | '/api/chat-status'
+    | '/api/files'
+    | '/api/jobs'
+    | '/api/sandbox-generations'
+    | '/app/$'
+    | '/auth/forget-password'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/reset-password'
+    | '/auth/signup'
+    | '/auth/verify'
+    | '/billing/plans'
+    | '/chat/$chatId'
+    | '/chat/incognito'
+    | '/docs/$'
+    | '/documents/$docId'
+    | '/enterprise/email'
+    | '/enterprise/getting-started'
+    | '/enterprise/login'
+    | '/enterprise/verify'
+    | '/github/callback'
+    | '/google/callback'
+    | '/help/faq'
+    | '/images/$imageChatId'
+    | '/legal/privacy'
+    | '/legal/terms'
+    | '/projects/$projectId'
+    | '/projects/new'
+    | '/runtime/$'
+    | '/settings/about'
+    | '/settings/accessibility'
+    | '/settings/ai'
+    | '/settings/appearance'
+    | '/settings/chat'
+    | '/settings/language'
+    | '/settings/notifications'
+    | '/settings/privacy'
+    | '/studio/images'
+    | '/studio/videos'
+    | '/verify/$'
+    | '/videos/$videoChatId'
+    | '/admin'
+    | '/chat'
+    | '/images'
+    | '/projects'
+    | '/settings'
+    | '/videos'
+    | '/api/artifacts/$artifactId'
+    | '/api/internal/story-run'
+    | '/api/jobs/$jobId'
+    | '/api/oauth/$provider'
+    | '/api/sandbox-generations/$jobId'
+    | '/api/storage/drive'
+    | '/auth/github/callback'
+    | '/auth/github/start'
+    | '/auth/google/callback'
+    | '/auth/google/start'
+    | '/settings/security/password'
+    | '/settings/security'
+  id:
+    | '__root__'
+    | '/'
+    | '/account'
+    | '/admin'
+    | '/app'
+    | '/auth'
+    | '/chat'
+    | '/drawer'
+    | '/enterprise'
+    | '/forgot-password'
+    | '/getting-started'
+    | '/guide'
+    | '/health'
+    | '/inbox'
+    | '/integrations'
+    | '/library'
+    | '/login'
+    | '/mail'
+    | '/prospecting'
+    | '/reset-password'
+    | '/search'
+    | '/settings'
+    | '/signup'
+    | '/support'
+    | '/verify'
+    | '/admin/analytics'
+    | '/admin/announcements'
+    | '/admin/audit'
+    | '/admin/background-tasks'
+    | '/admin/chat-sessions'
+    | '/admin/dashboard'
+    | '/admin/feature-flags'
+    | '/admin/notifications'
+    | '/admin/reports'
+    | '/admin/subscriptions'
+    | '/admin/support'
+    | '/admin/system'
+    | '/admin/users'
+    | '/ai/$provider'
+    | '/api/chat'
+    | '/api/chat-status'
+    | '/api/files'
+    | '/api/jobs'
+    | '/api/sandbox-generations'
+    | '/app/$'
+    | '/auth/forget-password'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/reset-password'
+    | '/auth/signup'
+    | '/auth/verify'
+    | '/billing/plans'
+    | '/chat/$chatId'
+    | '/chat/incognito'
+    | '/docs/$'
+    | '/documents/$docId'
+    | '/enterprise/email'
+    | '/enterprise/getting-started'
+    | '/enterprise/login'
+    | '/enterprise/verify'
+    | '/github/callback'
+    | '/google/callback'
+    | '/help/faq'
+    | '/images/$imageChatId'
+    | '/legal/privacy'
+    | '/legal/terms'
+    | '/projects/$projectId'
+    | '/projects/new'
+    | '/runtime/$'
+    | '/settings/about'
+    | '/settings/accessibility'
+    | '/settings/ai'
+    | '/settings/appearance'
+    | '/settings/chat'
+    | '/settings/language'
+    | '/settings/notifications'
+    | '/settings/privacy'
+    | '/studio/images'
+    | '/studio/videos'
+    | '/verify/$'
+    | '/videos/$videoChatId'
+    | '/admin/'
+    | '/chat/'
+    | '/images/'
+    | '/projects/'
+    | '/settings/'
+    | '/videos/'
+    | '/api/artifacts/$artifactId'
+    | '/api/internal/story-run'
+    | '/api/jobs/$jobId'
+    | '/api/oauth/$provider'
+    | '/api/sandbox-generations/$jobId'
+    | '/api/storage/drive'
+    | '/auth/github/callback'
+    | '/auth/github/start'
+    | '/auth/google/callback'
+    | '/auth/google/start'
+    | '/settings/security/password'
+    | '/settings/security/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
+  ChatRoute: typeof ChatRouteWithChildren
+  DrawerRoute: typeof DrawerRoute
+  EnterpriseRoute: typeof EnterpriseRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  GettingStartedRoute: typeof GettingStartedRoute
+  GuideRoute: typeof GuideRoute
+  HealthRoute: typeof HealthRoute
+  InboxRoute: typeof InboxRoute
+  IntegrationsRoute: typeof IntegrationsRoute
+  LibraryRoute: typeof LibraryRoute
+  LoginRoute: typeof LoginRoute
+  MailRoute: typeof MailRoute
+  ProspectingRoute: typeof ProspectingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SearchRoute: typeof SearchRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
+  SignupRoute: typeof SignupRoute
+  SupportRoute: typeof SupportRoute
+  VerifyRoute: typeof VerifyRouteWithChildren
+  AiProviderRoute: typeof AiProviderRoute
+  ApiChatRoute: typeof ApiChatRoute
+  ApiChatStatusRoute: typeof ApiChatStatusRoute
+  ApiFilesRoute: typeof ApiFilesRoute
+  ApiJobsRoute: typeof ApiJobsRouteWithChildren
+  ApiSandboxGenerationsRoute: typeof ApiSandboxGenerationsRouteWithChildren
+  BillingPlansRoute: typeof BillingPlansRoute
+  DocsSplatRoute: typeof DocsSplatRoute
+  DocumentsDocIdRoute: typeof DocumentsDocIdRoute
+  GithubCallbackRoute: typeof GithubCallbackRoute
+  GoogleCallbackRoute: typeof GoogleCallbackRoute
+  HelpFaqRoute: typeof HelpFaqRoute
+  ImagesImageChatIdRoute: typeof ImagesImageChatIdRoute
+  LegalPrivacyRoute: typeof LegalPrivacyRoute
+  LegalTermsRoute: typeof LegalTermsRoute
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  ProjectsNewRoute: typeof ProjectsNewRoute
+  RuntimeSplatRoute: typeof RuntimeSplatRoute
+  StudioImagesRoute: typeof StudioImagesRoute
+  StudioVideosRoute: typeof StudioVideosRoute
+  VideosVideoChatIdRoute: typeof VideosVideoChatIdRoute
+  ImagesIndexRoute: typeof ImagesIndexRoute
+  ProjectsIndexRoute: typeof ProjectsIndexRoute
+  VideosIndexRoute: typeof VideosIndexRoute
+  ApiArtifactsArtifactIdRoute: typeof ApiArtifactsArtifactIdRoute
+  ApiInternalStoryRunRoute: typeof ApiInternalStoryRunRoute
+  ApiOauthProviderRoute: typeof ApiOauthProviderRoute
+  ApiStorageDriveRoute: typeof ApiStorageDriveRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +1276,923 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/drawer': {
+      id: '/drawer'
+      path: '/drawer'
+      fullPath: '/drawer'
+      preLoaderRoute: typeof DrawerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enterprise': {
+      id: '/enterprise'
+      path: '/enterprise'
+      fullPath: '/enterprise'
+      preLoaderRoute: typeof EnterpriseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/getting-started': {
+      id: '/getting-started'
+      path: '/getting-started'
+      fullPath: '/getting-started'
+      preLoaderRoute: typeof GettingStartedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guide': {
+      id: '/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof GuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mail': {
+      id: '/mail'
+      path: '/mail'
+      fullPath: '/mail'
+      preLoaderRoute: typeof MailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prospecting': {
+      id: '/prospecting'
+      path: '/prospecting'
+      fullPath: '/prospecting'
+      preLoaderRoute: typeof ProspectingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/announcements': {
+      id: '/admin/announcements'
+      path: '/announcements'
+      fullPath: '/admin/announcements'
+      preLoaderRoute: typeof AdminAnnouncementsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/background-tasks': {
+      id: '/admin/background-tasks'
+      path: '/background-tasks'
+      fullPath: '/admin/background-tasks'
+      preLoaderRoute: typeof AdminBackgroundTasksRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/chat-sessions': {
+      id: '/admin/chat-sessions'
+      path: '/chat-sessions'
+      fullPath: '/admin/chat-sessions'
+      preLoaderRoute: typeof AdminChatSessionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/feature-flags': {
+      id: '/admin/feature-flags'
+      path: '/feature-flags'
+      fullPath: '/admin/feature-flags'
+      preLoaderRoute: typeof AdminFeatureFlagsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/subscriptions': {
+      id: '/admin/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/admin/subscriptions'
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/system': {
+      id: '/admin/system'
+      path: '/system'
+      fullPath: '/admin/system'
+      preLoaderRoute: typeof AdminSystemRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/ai/$provider': {
+      id: '/ai/$provider'
+      path: '/ai/$provider'
+      fullPath: '/ai/$provider'
+      preLoaderRoute: typeof AiProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat-status': {
+      id: '/api/chat-status'
+      path: '/api/chat-status'
+      fullPath: '/api/chat-status'
+      preLoaderRoute: typeof ApiChatStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files': {
+      id: '/api/files'
+      path: '/api/files'
+      fullPath: '/api/files'
+      preLoaderRoute: typeof ApiFilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/jobs': {
+      id: '/api/jobs'
+      path: '/api/jobs'
+      fullPath: '/api/jobs'
+      preLoaderRoute: typeof ApiJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sandbox-generations': {
+      id: '/api/sandbox-generations'
+      path: '/api/sandbox-generations'
+      fullPath: '/api/sandbox-generations'
+      preLoaderRoute: typeof ApiSandboxGenerationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/$': {
+      id: '/app/$'
+      path: '/$'
+      fullPath: '/app/$'
+      preLoaderRoute: typeof AppSplatRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/auth/forget-password': {
+      id: '/auth/forget-password'
+      path: '/forget-password'
+      fullPath: '/auth/forget-password'
+      preLoaderRoute: typeof AuthForgetPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/register': {
+      id: '/auth/register'
+      path: '/register'
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/signup': {
+      id: '/auth/signup'
+      path: '/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/verify': {
+      id: '/auth/verify'
+      path: '/verify'
+      fullPath: '/auth/verify'
+      preLoaderRoute: typeof AuthVerifyRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/billing/plans': {
+      id: '/billing/plans'
+      path: '/billing/plans'
+      fullPath: '/billing/plans'
+      preLoaderRoute: typeof BillingPlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/': {
+      id: '/chat/'
+      path: '/'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof ChatIndexRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/chat/$chatId': {
+      id: '/chat/$chatId'
+      path: '/$chatId'
+      fullPath: '/chat/$chatId'
+      preLoaderRoute: typeof ChatChatIdRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/chat/incognito': {
+      id: '/chat/incognito'
+      path: '/incognito'
+      fullPath: '/chat/incognito'
+      preLoaderRoute: typeof ChatIncognitoRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/docs/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents/$docId': {
+      id: '/documents/$docId'
+      path: '/documents/$docId'
+      fullPath: '/documents/$docId'
+      preLoaderRoute: typeof DocumentsDocIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enterprise/email': {
+      id: '/enterprise/email'
+      path: '/email'
+      fullPath: '/enterprise/email'
+      preLoaderRoute: typeof EnterpriseEmailRouteImport
+      parentRoute: typeof EnterpriseRoute
+    }
+    '/enterprise/getting-started': {
+      id: '/enterprise/getting-started'
+      path: '/getting-started'
+      fullPath: '/enterprise/getting-started'
+      preLoaderRoute: typeof EnterpriseGettingStartedRouteImport
+      parentRoute: typeof EnterpriseRoute
+    }
+    '/enterprise/login': {
+      id: '/enterprise/login'
+      path: '/login'
+      fullPath: '/enterprise/login'
+      preLoaderRoute: typeof EnterpriseLoginRouteImport
+      parentRoute: typeof EnterpriseRoute
+    }
+    '/enterprise/verify': {
+      id: '/enterprise/verify'
+      path: '/verify'
+      fullPath: '/enterprise/verify'
+      preLoaderRoute: typeof EnterpriseVerifyRouteImport
+      parentRoute: typeof EnterpriseRoute
+    }
+    '/github/callback': {
+      id: '/github/callback'
+      path: '/github/callback'
+      fullPath: '/github/callback'
+      preLoaderRoute: typeof GithubCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/google/callback': {
+      id: '/google/callback'
+      path: '/google/callback'
+      fullPath: '/google/callback'
+      preLoaderRoute: typeof GoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/faq': {
+      id: '/help/faq'
+      path: '/help/faq'
+      fullPath: '/help/faq'
+      preLoaderRoute: typeof HelpFaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/images/': {
+      id: '/images/'
+      path: '/images'
+      fullPath: '/images/'
+      preLoaderRoute: typeof ImagesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/images/$imageChatId': {
+      id: '/images/$imageChatId'
+      path: '/images/$imageChatId'
+      fullPath: '/images/$imageChatId'
+      preLoaderRoute: typeof ImagesImageChatIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/privacy': {
+      id: '/legal/privacy'
+      path: '/legal/privacy'
+      fullPath: '/legal/privacy'
+      preLoaderRoute: typeof LegalPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/terms': {
+      id: '/legal/terms'
+      path: '/legal/terms'
+      fullPath: '/legal/terms'
+      preLoaderRoute: typeof LegalTermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$projectId': {
+      id: '/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/new': {
+      id: '/projects/new'
+      path: '/projects/new'
+      fullPath: '/projects/new'
+      preLoaderRoute: typeof ProjectsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/runtime/$': {
+      id: '/runtime/$'
+      path: '/runtime/$'
+      fullPath: '/runtime/$'
+      preLoaderRoute: typeof RuntimeSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/about': {
+      id: '/settings/about'
+      path: '/about'
+      fullPath: '/settings/about'
+      preLoaderRoute: typeof SettingsAboutRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/accessibility': {
+      id: '/settings/accessibility'
+      path: '/accessibility'
+      fullPath: '/settings/accessibility'
+      preLoaderRoute: typeof SettingsAccessibilityRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/ai': {
+      id: '/settings/ai'
+      path: '/ai'
+      fullPath: '/settings/ai'
+      preLoaderRoute: typeof SettingsAiRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/appearance': {
+      id: '/settings/appearance'
+      path: '/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof SettingsAppearanceRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/chat': {
+      id: '/settings/chat'
+      path: '/chat'
+      fullPath: '/settings/chat'
+      preLoaderRoute: typeof SettingsChatRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/language': {
+      id: '/settings/language'
+      path: '/language'
+      fullPath: '/settings/language'
+      preLoaderRoute: typeof SettingsLanguageRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/privacy': {
+      id: '/settings/privacy'
+      path: '/privacy'
+      fullPath: '/settings/privacy'
+      preLoaderRoute: typeof SettingsPrivacyRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/studio/images': {
+      id: '/studio/images'
+      path: '/studio/images'
+      fullPath: '/studio/images'
+      preLoaderRoute: typeof StudioImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio/videos': {
+      id: '/studio/videos'
+      path: '/studio/videos'
+      fullPath: '/studio/videos'
+      preLoaderRoute: typeof StudioVideosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify/$': {
+      id: '/verify/$'
+      path: '/$'
+      fullPath: '/verify/$'
+      preLoaderRoute: typeof VerifySplatRouteImport
+      parentRoute: typeof VerifyRoute
+    }
+    '/videos/': {
+      id: '/videos/'
+      path: '/videos'
+      fullPath: '/videos/'
+      preLoaderRoute: typeof VideosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/videos/$videoChatId': {
+      id: '/videos/$videoChatId'
+      path: '/videos/$videoChatId'
+      fullPath: '/videos/$videoChatId'
+      preLoaderRoute: typeof VideosVideoChatIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/artifacts/$artifactId': {
+      id: '/api/artifacts/$artifactId'
+      path: '/api/artifacts/$artifactId'
+      fullPath: '/api/artifacts/$artifactId'
+      preLoaderRoute: typeof ApiArtifactsArtifactIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/story-run': {
+      id: '/api/internal/story-run'
+      path: '/api/internal/story-run'
+      fullPath: '/api/internal/story-run'
+      preLoaderRoute: typeof ApiInternalStoryRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/jobs/$jobId': {
+      id: '/api/jobs/$jobId'
+      path: '/$jobId'
+      fullPath: '/api/jobs/$jobId'
+      preLoaderRoute: typeof ApiJobsJobIdRouteImport
+      parentRoute: typeof ApiJobsRoute
+    }
+    '/api/oauth/$provider': {
+      id: '/api/oauth/$provider'
+      path: '/api/oauth/$provider'
+      fullPath: '/api/oauth/$provider'
+      preLoaderRoute: typeof ApiOauthProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sandbox-generations/$jobId': {
+      id: '/api/sandbox-generations/$jobId'
+      path: '/$jobId'
+      fullPath: '/api/sandbox-generations/$jobId'
+      preLoaderRoute: typeof ApiSandboxGenerationsJobIdRouteImport
+      parentRoute: typeof ApiSandboxGenerationsRoute
+    }
+    '/api/storage/drive': {
+      id: '/api/storage/drive'
+      path: '/api/storage/drive'
+      fullPath: '/api/storage/drive'
+      preLoaderRoute: typeof ApiStorageDriveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/github/callback': {
+      id: '/auth/github/callback'
+      path: '/github/callback'
+      fullPath: '/auth/github/callback'
+      preLoaderRoute: typeof AuthGithubCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/github/start': {
+      id: '/auth/github/start'
+      path: '/github/start'
+      fullPath: '/auth/github/start'
+      preLoaderRoute: typeof AuthGithubStartRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/google/callback': {
+      id: '/auth/google/callback'
+      path: '/google/callback'
+      fullPath: '/auth/google/callback'
+      preLoaderRoute: typeof AuthGoogleCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/google/start': {
+      id: '/auth/google/start'
+      path: '/google/start'
+      fullPath: '/auth/google/start'
+      preLoaderRoute: typeof AuthGoogleStartRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/settings/security/': {
+      id: '/settings/security/'
+      path: '/security'
+      fullPath: '/settings/security/'
+      preLoaderRoute: typeof SettingsSecurityIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/security/password': {
+      id: '/settings/security/password'
+      path: '/security/password'
+      fullPath: '/settings/security/password'
+      preLoaderRoute: typeof SettingsSecurityPasswordRouteImport
+      parentRoute: typeof SettingsRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
+  AdminAuditRoute: typeof AdminAuditRoute
+  AdminBackgroundTasksRoute: typeof AdminBackgroundTasksRoute
+  AdminChatSessionsRoute: typeof AdminChatSessionsRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminFeatureFlagsRoute: typeof AdminFeatureFlagsRoute
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
+  AdminSystemRoute: typeof AdminSystemRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminAnnouncementsRoute: AdminAnnouncementsRoute,
+  AdminAuditRoute: AdminAuditRoute,
+  AdminBackgroundTasksRoute: AdminBackgroundTasksRoute,
+  AdminChatSessionsRoute: AdminChatSessionsRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminFeatureFlagsRoute: AdminFeatureFlagsRoute,
+  AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminSubscriptionsRoute: AdminSubscriptionsRoute,
+  AdminSupportRoute: AdminSupportRoute,
+  AdminSystemRoute: AdminSystemRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface AppRouteChildren {
+  AppSplatRoute: typeof AppSplatRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppSplatRoute: AppSplatRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface AuthRouteChildren {
+  AuthForgetPasswordRoute: typeof AuthForgetPasswordRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+  AuthVerifyRoute: typeof AuthVerifyRoute
+  AuthGithubCallbackRoute: typeof AuthGithubCallbackRoute
+  AuthGithubStartRoute: typeof AuthGithubStartRoute
+  AuthGoogleCallbackRoute: typeof AuthGoogleCallbackRoute
+  AuthGoogleStartRoute: typeof AuthGoogleStartRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthForgetPasswordRoute: AuthForgetPasswordRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthSignupRoute: AuthSignupRoute,
+  AuthVerifyRoute: AuthVerifyRoute,
+  AuthGithubCallbackRoute: AuthGithubCallbackRoute,
+  AuthGithubStartRoute: AuthGithubStartRoute,
+  AuthGoogleCallbackRoute: AuthGoogleCallbackRoute,
+  AuthGoogleStartRoute: AuthGoogleStartRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+interface ChatRouteChildren {
+  ChatChatIdRoute: typeof ChatChatIdRoute
+  ChatIncognitoRoute: typeof ChatIncognitoRoute
+  ChatIndexRoute: typeof ChatIndexRoute
+}
+
+const ChatRouteChildren: ChatRouteChildren = {
+  ChatChatIdRoute: ChatChatIdRoute,
+  ChatIncognitoRoute: ChatIncognitoRoute,
+  ChatIndexRoute: ChatIndexRoute,
+}
+
+const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
+
+interface EnterpriseRouteChildren {
+  EnterpriseEmailRoute: typeof EnterpriseEmailRoute
+  EnterpriseGettingStartedRoute: typeof EnterpriseGettingStartedRoute
+  EnterpriseLoginRoute: typeof EnterpriseLoginRoute
+  EnterpriseVerifyRoute: typeof EnterpriseVerifyRoute
+}
+
+const EnterpriseRouteChildren: EnterpriseRouteChildren = {
+  EnterpriseEmailRoute: EnterpriseEmailRoute,
+  EnterpriseGettingStartedRoute: EnterpriseGettingStartedRoute,
+  EnterpriseLoginRoute: EnterpriseLoginRoute,
+  EnterpriseVerifyRoute: EnterpriseVerifyRoute,
+}
+
+const EnterpriseRouteWithChildren = EnterpriseRoute._addFileChildren(
+  EnterpriseRouteChildren,
+)
+
+interface SettingsRouteChildren {
+  SettingsAboutRoute: typeof SettingsAboutRoute
+  SettingsAccessibilityRoute: typeof SettingsAccessibilityRoute
+  SettingsAiRoute: typeof SettingsAiRoute
+  SettingsAppearanceRoute: typeof SettingsAppearanceRoute
+  SettingsChatRoute: typeof SettingsChatRoute
+  SettingsLanguageRoute: typeof SettingsLanguageRoute
+  SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsPrivacyRoute: typeof SettingsPrivacyRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+  SettingsSecurityPasswordRoute: typeof SettingsSecurityPasswordRoute
+  SettingsSecurityIndexRoute: typeof SettingsSecurityIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAboutRoute: SettingsAboutRoute,
+  SettingsAccessibilityRoute: SettingsAccessibilityRoute,
+  SettingsAiRoute: SettingsAiRoute,
+  SettingsAppearanceRoute: SettingsAppearanceRoute,
+  SettingsChatRoute: SettingsChatRoute,
+  SettingsLanguageRoute: SettingsLanguageRoute,
+  SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsPrivacyRoute: SettingsPrivacyRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+  SettingsSecurityPasswordRoute: SettingsSecurityPasswordRoute,
+  SettingsSecurityIndexRoute: SettingsSecurityIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
+interface VerifyRouteChildren {
+  VerifySplatRoute: typeof VerifySplatRoute
+}
+
+const VerifyRouteChildren: VerifyRouteChildren = {
+  VerifySplatRoute: VerifySplatRoute,
+}
+
+const VerifyRouteWithChildren =
+  VerifyRoute._addFileChildren(VerifyRouteChildren)
+
+interface ApiJobsRouteChildren {
+  ApiJobsJobIdRoute: typeof ApiJobsJobIdRoute
+}
+
+const ApiJobsRouteChildren: ApiJobsRouteChildren = {
+  ApiJobsJobIdRoute: ApiJobsJobIdRoute,
+}
+
+const ApiJobsRouteWithChildren =
+  ApiJobsRoute._addFileChildren(ApiJobsRouteChildren)
+
+interface ApiSandboxGenerationsRouteChildren {
+  ApiSandboxGenerationsJobIdRoute: typeof ApiSandboxGenerationsJobIdRoute
+}
+
+const ApiSandboxGenerationsRouteChildren: ApiSandboxGenerationsRouteChildren = {
+  ApiSandboxGenerationsJobIdRoute: ApiSandboxGenerationsJobIdRoute,
+}
+
+const ApiSandboxGenerationsRouteWithChildren =
+  ApiSandboxGenerationsRoute._addFileChildren(
+    ApiSandboxGenerationsRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
+  AdminRoute: AdminRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
+  AuthRoute: AuthRouteWithChildren,
+  ChatRoute: ChatRouteWithChildren,
+  DrawerRoute: DrawerRoute,
+  EnterpriseRoute: EnterpriseRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  GettingStartedRoute: GettingStartedRoute,
+  GuideRoute: GuideRoute,
+  HealthRoute: HealthRoute,
+  InboxRoute: InboxRoute,
+  IntegrationsRoute: IntegrationsRoute,
+  LibraryRoute: LibraryRoute,
+  LoginRoute: LoginRoute,
+  MailRoute: MailRoute,
+  ProspectingRoute: ProspectingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SearchRoute: SearchRoute,
+  SettingsRoute: SettingsRouteWithChildren,
+  SignupRoute: SignupRoute,
+  SupportRoute: SupportRoute,
+  VerifyRoute: VerifyRouteWithChildren,
+  AiProviderRoute: AiProviderRoute,
+  ApiChatRoute: ApiChatRoute,
+  ApiChatStatusRoute: ApiChatStatusRoute,
+  ApiFilesRoute: ApiFilesRoute,
+  ApiJobsRoute: ApiJobsRouteWithChildren,
+  ApiSandboxGenerationsRoute: ApiSandboxGenerationsRouteWithChildren,
+  BillingPlansRoute: BillingPlansRoute,
+  DocsSplatRoute: DocsSplatRoute,
+  DocumentsDocIdRoute: DocumentsDocIdRoute,
+  GithubCallbackRoute: GithubCallbackRoute,
+  GoogleCallbackRoute: GoogleCallbackRoute,
+  HelpFaqRoute: HelpFaqRoute,
+  ImagesImageChatIdRoute: ImagesImageChatIdRoute,
+  LegalPrivacyRoute: LegalPrivacyRoute,
+  LegalTermsRoute: LegalTermsRoute,
+  ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  ProjectsNewRoute: ProjectsNewRoute,
+  RuntimeSplatRoute: RuntimeSplatRoute,
+  StudioImagesRoute: StudioImagesRoute,
+  StudioVideosRoute: StudioVideosRoute,
+  VideosVideoChatIdRoute: VideosVideoChatIdRoute,
+  ImagesIndexRoute: ImagesIndexRoute,
+  ProjectsIndexRoute: ProjectsIndexRoute,
+  VideosIndexRoute: VideosIndexRoute,
+  ApiArtifactsArtifactIdRoute: ApiArtifactsArtifactIdRoute,
+  ApiInternalStoryRunRoute: ApiInternalStoryRunRoute,
+  ApiOauthProviderRoute: ApiOauthProviderRoute,
+  ApiStorageDriveRoute: ApiStorageDriveRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

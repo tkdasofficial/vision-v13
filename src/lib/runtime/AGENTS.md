@@ -1,0 +1,1 @@
+- Rejected runtime evidence uses session-authenticated transport and owner-scoped storage, never chat/results/Actions logs/final artifacts; reads enforce expiry and writes enforce atomic per-job bounds. Why: diagnose failures privately without approving rejected output.
