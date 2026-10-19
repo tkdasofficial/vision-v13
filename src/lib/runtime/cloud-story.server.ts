@@ -13,7 +13,9 @@ import { orchestrateText, type Completion } from "../ai/orchestrator.server";
 import { TEXT_CHAIN } from "../ai/models.server";
 import * as slots from "../sandbox/slots.server";
 import { SLOT_LIMITS } from "../sandbox/slots";
-import { normalizeScene, parseSceneCount, sceneContract, scoreScene, assembleStoryDocument, validateAssembled, storyInstructions, checkStory, STORY_LIMITS } from "./cloud-story";
+import { openStoryWorkspace } from "../sandbox/story-workspace.server";
+import { storyDialogueRange, requiresFixedStoryBackground } from "../ai/story-output";
+import { normalizeScene, parseSceneCount, sceneContract, sceneHeadings, scoreScene, assembleStoryDocument, validateAssembled, storyInstructions, checkStory, STORY_LIMITS } from "./cloud-story";
 
 const now = () => new Date().toISOString();
 
@@ -121,6 +123,14 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
 
   await slots.ensureSlots();
   await setStage(jobId, "planning");
+  // Per-job workspace record (vision-sandbox, migration 0005): mirrors what actually happens below.
+  const jobRow = (await d1<{ created_at: string }>("SELECT created_at FROM jobs WHERE id = ? AND user_id = ?", [jobId, userId]))[0];
+  const w = await openStoryWorkspace({
+    userId, jobId, chatId: job.sessionId, prompt, count,
+    meta: { headings: sceneHeadings(prompt), dialogue: storyDialogueRange(prompt), fixedBackground: requiresFixedStoryBackground(prompt) },
+    queuedAt: jobRow?.created_at ? Date.parse(jobRow.created_at) : undefined,
+  });
+  await w.heartbeat();
 
   // Slot 1: the user's original prompt, stored verbatim (no provider call).
   if (!(await readValidated(userId, jobId, SLOT_LIMITS.userPromptSlot))) {
@@ -145,6 +155,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     if (!r.ok) return fail(userId, jobId, `Blueprint generation failed: ${r.error}`);
     blueprintRef = r.recordId!; blueprint = r.content!;
     await slots.setSlotStatus(userId, jobId, 3, "validated", { result_ref: blueprintRef });
+    await w.blueprint(blueprint);
   }
 
   // Slot 2: Story (resume-aware).
@@ -220,20 +231,28 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       const rec = await slots.readRecord(userId, prog.ref);
       if (rec) { content = normalizeScene(rec.content, i); round = prog.round; }
     }
+    let fresh = false;
     if (!content) {
+      const t0 = Date.now();
       const gen = await generateIntoSlot(userId, jobId, slotId, "prompt", sceneMsgs(""), STORY_LIMITS.maxSceneTokens, call);
-      if (!gen.ok) { failedScenes++; continue; }
+      await w.attempt(4 + i, "generation", t0, gen.ok, gen.ok ? undefined : String(gen.error ?? "failed"));
+      if (!gen.ok) { failedScenes++; await w.slotDone(i, false); continue; }
       content = normalizeScene(gen.content!, i);
       await slots.saveSlotProgress(userId, jobId, slotId, JSON.stringify({ ref: gen.recordId, round: 0 }));
+      fresh = true;
     }
     let { score, issues } = scoreScene(content, i, prompt);
+    if (fresh) await w.validated(i, content, issues, "generation");
     if (score < SLOT_LIMITS.passScore && round === 0) {
       // One full regeneration with the pointed findings.
+      const t0 = Date.now();
       const gen = await generateIntoSlot(userId, jobId, slotId, "prompt", sceneMsgs(` The previous attempt failed these checks: ${issues.join(" ")} Fix every one of them.`), STORY_LIMITS.maxSceneTokens, call);
-      if (!gen.ok) { failedScenes++; continue; }
+      await w.attempt(4 + i, "retry", t0, gen.ok, gen.ok ? undefined : String(gen.error ?? "failed"));
+      if (!gen.ok) { failedScenes++; await w.slotDone(i, false); continue; }
       round = 1;
       const candidate = normalizeScene(gen.content!, i);
       const rescored = scoreScene(candidate, i, prompt);
+      await w.validated(i, candidate, rescored.issues, "retry");
       // Keep whichever version scores higher; a worse rewrite never replaces a better draft.
       if (rescored.score >= score) { content = candidate; ({ score, issues } = rescored); }
       const ref = await slots.saveRecord(userId, jobId, slotId, "prompt", content);
@@ -241,14 +260,17 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     }
 
     while (score < SLOT_LIMITS.passScore && round - 1 < SLOT_LIMITS.maxFixAttempts) {
+      const t0 = Date.now();
       const fix = await call([
         { role: "system", content: "Fix Prompt: repair the scene so it satisfies every pointed finding. Return only the corrected scene, keeping the required headings and staying consistent with the blueprint." },
         { role: "user", content: `Blueprint:\n${blueprint}\n\nPointed fixes required: ${issues.join(" ")}\n\nWrong prompt:\n${content}` },
       ], STORY_LIMITS.maxSceneTokens);
+      await w.attempt(4 + i, "repair", t0, fix.ok && !!fix.text.trim(), fix.ok ? (fix.text.trim() ? undefined : "empty") : `provider_${fix.status}`);
       if (!fix.ok || !fix.text.trim()) break;
       round++;
       const candidate = normalizeScene(fix.text, i);
       const rescored = scoreScene(candidate, i, prompt);
+      await w.validated(i, candidate, rescored.issues, "repair");
       if (rescored.score >= score) { content = candidate; ({ score, issues } = rescored); }
       const ref = await slots.saveRecord(userId, jobId, slotId, "prompt", content);
       await slots.saveSlotProgress(userId, jobId, slotId, JSON.stringify({ ref, round }));
@@ -258,7 +280,9 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       const recId = await slots.saveRecord(userId, jobId, slotId, "prompt", content);
       await slots.setSlotStatus(userId, jobId, slotId, "validated", { result_ref: recId, blueprint_ref: blueprintRef, story_ref: storyRef });
       scenes.push(content);
+      await w.slotDone(i, true);
     } else {
+      await w.slotDone(i, false);
       // Honest failure: keep the findings as private diagnostics, never claim a pass.
       await slots.setSlotStatus(userId, jobId, slotId, "failed", { findings: JSON.stringify({ score, issues }), error_code: "below_pass_score" });
       failedScenes++;
@@ -271,6 +295,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
   await setStage(jobId, "assembling");
   const doc = assembleStoryDocument({ story, scenes });
   const issues = validateAssembled(doc, prompt);
+  await w.finalValidation(issues);
   if (issues.length) {
     return fail(userId, jobId, `The assembled story did not meet the request: ${issues.slice(0, 5).join(" ")}`.slice(0, 400));
   }
