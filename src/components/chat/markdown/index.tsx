@@ -58,7 +58,7 @@ export default function MarkdownBlock({ markdown, label = "Markdown", renderCode
         </header>
         <div tabIndex={0} aria-label={`${label} content`} className="relative min-h-0 shrink overflow-auto overscroll-x-contain [touch-action:pan-x_pan-y] focus-visible:outline-2 focus-visible:outline-ring">
           <div className="content-block-body flow-root">
-            <div ref={body} className="max-w-none break-words p-4 text-sm leading-relaxed text-foreground [overflow-wrap:anywhere] [&_ol]:list-decimal [&_ul]:list-disc [&_ol]:pl-6 [&_ul]:pl-6 [&_li]:my-0.5">{render()}</div>
+            <div ref={body} className="reply-markdown max-w-none break-words p-5 text-foreground [overflow-wrap:anywhere]">{render()}</div>
           </div>
         </div>
         <div className="content-block-footer hidden h-7 shrink-0 items-center justify-between gap-2 border-t border-border px-4 font-mono text-[11px] text-muted-foreground md:flex"><span className="truncate">document.md</span><span className="shrink-0">{lines} {lines === 1 ? "line" : "lines"}</span></div>
