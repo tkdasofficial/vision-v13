@@ -11,6 +11,8 @@ import { endpoint, failureCategory } from "./providers.server";
 
 /** Per-provider wall-clock cap; waiting is free on the Free plan, but a hung provider must fail over. */
 export const COMPLETE_TIMEOUT_MS = 150_000;
+/** Thinking models spend hidden reasoning tokens from max_tokens; without headroom the visible reply comes back empty. */
+export const REASONING_RESERVE = 4096;
 
 /** Pulls the reply text out of an OpenAI-compatible or Workers AI response body. */
 export function replyText(body: any): { text: string; finish: string | null } {
@@ -25,7 +27,7 @@ async function once(t: ModelRef, messages: unknown[], maxTokens: number): Promis
   try {
     if (t.provider === "cf" && getAiBinding()) {
       const out = await Promise.race([
-        getAiBinding()!.run(t.model, { messages, max_tokens: maxTokens }),
+        getAiBinding()!.run(t.model, { messages, max_tokens: maxTokens + REASONING_RESERVE }),
         new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), COMPLETE_TIMEOUT_MS)),
       ]);
       const { text, finish } = replyText(out);
@@ -37,7 +39,7 @@ async function once(t: ModelRef, messages: unknown[], maxTokens: number): Promis
     const res = await fetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: t.model, messages, stream: false, max_tokens: maxTokens }),
+      body: JSON.stringify({ model: t.model, messages, stream: false, max_tokens: maxTokens + REASONING_RESERVE, ...(t.provider === "groq" ? { reasoning_effort: "low" } : {}) }),
       signal: AbortSignal.timeout(COMPLETE_TIMEOUT_MS),
     });
     log(res.status);
@@ -47,6 +49,7 @@ async function once(t: ModelRef, messages: unknown[], maxTokens: number): Promis
       return { ok: false, status: res.status, reason };
     }
     const { text, finish } = replyText(await res.json());
+    if (!text) console.log(JSON.stringify({ tag: "[ai:once:empty]", provider: t.provider, finish }));
     return text ? { ok: true, text, finishReason: finish, model: t } : { ok: false, status: 502, reason: "empty reply" };
   } catch (e: any) {
     log(504);
