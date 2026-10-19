@@ -37,6 +37,7 @@ describe("story workspace bridge", () => {
     expect(q("SELECT * FROM job_slots WHERE slot_type='generated_prompt' AND status='completed'")).toHaveLength(5);
     expect(q("SELECT * FROM prompt_versions WHERE slot_id=(SELECT slot_id FROM job_slots WHERE slot_index=4)")).toHaveLength(2);
     expect(q("SELECT * FROM validation_findings")).toHaveLength(1);
+    expect(q("SELECT requested_prompt_count FROM request_context")[0].requested_prompt_count).toBe(5);
     expect(q("SELECT * FROM cleanup_tasks")).toHaveLength(0);
     await closeStoryWorkspace("u1", "rt-job-1", true, db);
     expect(q("SELECT workflow_status FROM generation_jobs")[0].workflow_status).toBe("succeeded");

@@ -58,8 +58,8 @@ export async function openStoryWorkspace(input: {
       for (const s of slots) slotIds.set(s.slot_index, s.slot_id);
       if (job.workflow_status === "queued") {
         const t = Date.now();
-        await db("INSERT OR IGNORE INTO request_context (context_id, job_id, task_type, output_format, requested_prompt_count, normalized_request, extraction_status, created_at) VALUES (?, ?, 'story_prompts', 'markdown', ?, ?, 'extracted', ?)",
-          [crypto.randomUUID(), jobId, input.count, JSON.stringify(input.meta), t]);
+        await db("INSERT OR IGNORE INTO request_context (context_id, job_id, task_type, output_format, requested_prompt_count, normalized_request, extraction_status, created_at, updated_at) VALUES (?, ?, 'story_prompts', 'markdown', ?, ?, 'extracted', ?, ?)",
+          [crypto.randomUUID(), jobId, input.count, JSON.stringify(input.meta), t, t]);
         const rules: [string, string][] = [
           ["required_element", `Exactly ${input.count} scenes, each with sections: ${input.meta.headings.join(", ")}`],
           ["consistency_rule", "Keep every character's name, appearance and clothing exactly as in the blueprint."],
