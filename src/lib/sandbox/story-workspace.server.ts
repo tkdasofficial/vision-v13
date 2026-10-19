@@ -125,7 +125,12 @@ export async function openStoryWorkspace(input: {
 }
 
 /** Called after the runtime finalizer: success schedules cleanup only once the reply is saved in chat history. */
-export async function closeStoryWorkspace(userId: string, runtimeJobId: string, delivered: boolean, db?: Db | null) {
+/**
+ * Closes the workspace after the runtime finalizer. On delivery, cleans the sandbox immediately once
+ * `verifyPersisted` confirms the reply is in permanent chat history; otherwise keeps it (scheduled sweep
+ * is only the fallback). Failed delivery never deletes anything early.
+ */
+export async function closeStoryWorkspace(userId: string, runtimeJobId: string, delivered: boolean, db?: Db | null, verifyPersisted?: () => Promise<boolean>) {
   const d = db === undefined ? await defaultDb() : db;
   if (!d) return;
   try {
@@ -136,10 +141,23 @@ export async function closeStoryWorkspace(userId: string, runtimeJobId: string, 
       if (await ws.transition(d, userId, job.id, "succeeded")) {
         const started = (await d("SELECT created_at FROM generation_jobs WHERE id = ?", [job.id]))[0]?.created_at;
         await d("INSERT INTO generation_events (job_id, event_type, status, detail, created_at) VALUES (?, 'delivered', 'succeeded', ?, ?)", [job.id, started ? `total_ms=${Date.now() - started}` : null, Date.now()]);
-        await ws.scheduleCleanup(d, userId, job.id);
       }
+      const result = verifyPersisted ? await ws.cleanupNow(d, userId, job.id, verifyPersisted) : "skipped";
+      // Not verified or purge failed: keep the data; the scheduled sweep is the fallback.
+      if (result === "skipped") await ws.scheduleCleanup(d, userId, job.id);
+      console.log(JSON.stringify({ tag: "[story-workspace]", what: "cleanup", jobId: job.id, result }));
     } else if (!["succeeded", "failed", "cancelled", "expired"].includes(job.workflow_status)) {
       await ws.transition(d, userId, job.id, "failed", "delivery_failed");
     }
   } catch (e) { log("close", e); }
+}
+
+/** True when the job's assistant reply is saved, non-empty, in a chat owned by the user (main D1). */
+export async function replyPersisted(userId: string, runtimeJobId: string): Promise<boolean> {
+  const { d1 } = await import("@/lib/cloud/db.server");
+  const rows = await d1<any>(
+    "SELECT 1 AS ok FROM chat_messages m JOIN chat_sessions s ON s.id = m.session_id WHERE m.id = ? AND s.user_id = ? AND m.role = 'assistant' AND TRIM(m.content) <> '' LIMIT 1",
+    [`job-${runtimeJobId}`, userId],
+  );
+  return rows.length > 0;
 }
