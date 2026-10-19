@@ -2,7 +2,7 @@
 
 ## Status
 
-Small local optimizations implemented. No Cloudflare deployment, database changes, credential changes or new live generation. The same account was requested for testing, but there is no usable browser session, test-password environment variable or saved browser session in this workspace. The earlier chat-pasted password has not been retrieved or reused. Signed-out browser verification reaches `/auth/login`, not the generation flow.
+Small optimizations deployed to the existing Cloudflare Worker on the user's explicit request after 1,604 tests passed. Deployment version: `ada17d4b-8269-4f88-9192-899c28e4ecbd`; Worker: `https://vision.tusharkantidasofficial.workers.dev`. Deployment completed successfully with the existing D1 databases, story queue and hourly cleanup trigger; deployed `/health` returned HTTP 200. No database or credential changes and no new live generation. There is no usable session for the same account in this workspace. The earlier chat-pasted password has not been retrieved or reused. Fresh browser verification reaches `/auth/login`, not the generation flow.
 
 ## Confirmed workflow
 
@@ -36,4 +36,4 @@ Small local optimizations implemented. No Cloudflare deployment, database change
 
 Queue time, per-provider body-complete time, polling/network time, validation, repair, database-operation time, inter-run gaps and total five-scene completion time have **not** been measured before/after in comparable live conditions. The historical 14.6-minute run used earlier fixes and is not a valid fresh baseline. No percentage improvement or live generation speed is claimed.
 
-Resume with secure usable access to the same account, run the unchanged five-scene prompt on the current live Worker while recording logs/network timing, and compare with a verified candidate under equivalent conditions. Production deployment remains withheld until the authenticated flow, permanent chat persistence, immediate cleanup and comparative timings can be checked safely. Do not bypass sign-in, mint a first-party session through database writes or reset a password to unblock the test.
+Resume with usable access to the same account and run the unchanged five-scene prompt on the deployed Worker while recording timing, saved reply and cleanup evidence. Deployment was explicitly requested despite the pending authenticated comparison; live generation time and improvement remain unverified. Do not bypass sign-in, mint a first-party session through database writes or reset a password to unblock the test.
