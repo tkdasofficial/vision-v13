@@ -241,3 +241,8 @@ Spec: user-uploaded VISION memory/output/artifact/activity integration doc (5 ta
 - [x] Removed Google credentials; Cloud Run dropped.
 - [x] Migration 0005 (12 logical tables, reuses generation_jobs/generation_events) applied to live vision-sandbox; workspace module, hourly cleanup cron, 10 tests pass.
 - [ ] Cleanup cron activates only after the next `bun run deploy`. Wiring the workspace into the live prompt pipeline is a future step. 100-user capacity not load-tested.
+
+## Sandbox integration (single-user test)
+- [x] Story jobs recorded in sandbox workspace; real 5-scene test passed and persisted
+- [ ] Cleanup of test job runs on its scheduled hourly sweep (~24h retention)
+- [ ] Image generation from the five prompts (not part of this chat flow)
