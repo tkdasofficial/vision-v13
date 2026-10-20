@@ -1,5 +1,10 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Deploy backend and repeat live five-scene test
+- [ ] Verify existing deployment configuration and regression checks; deploy the existing backend only.
+- [ ] Use newly supplied credentials once for the same-account, identical-request live test; measure terminal delivery and saved-message timing.
+- [ ] Check five-scene quality, permanent reply reload and job-specific temporary cleanup; report actual results and remove temporary authentication material.
+
 ## Current request — Story generation quality
 - [x] Trace existing request→queue→slots→validation→artifact→chat→cleanup flow; unchanged full baseline 1,724 passed/one skipped and eight-file workflow baseline 86 passed/one skipped (injected models, not live AI).
 - [x] Structured new character/visual/causal blueprints, shared Deep semantic review contract, evidence-linked scene/paragraph repair overlays and hashes in existing slot metadata; original accepted records/providers/schema/finalizer remain unchanged.
