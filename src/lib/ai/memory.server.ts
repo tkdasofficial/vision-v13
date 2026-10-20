@@ -38,7 +38,9 @@ export async function loadProjectMemory(userId: string, projectId: string, chatI
     [userId, projectId, chatId],
   ).catch(() => []);
   const norm = rows.map((r) => ({ ...r, role: String(r.role), createdAt: String(r.createdAt ?? ""), content: String(r.content ?? ""), title: String(r.title ?? "") }));
-  return projectRowsBlock(rankProjectRows(norm, projectId, chatId, text));
+  let cutoff = 0;
+  try { await ensureMem(); const state = await d1("SELECT history_blocked FROM user_memory_state WHERE user_id = ?", [userId]); cutoff = Number(state[0]?.history_blocked ?? 0); } catch { return ""; }
+  return projectRowsBlock(rankProjectRows(norm.filter((r) => !cutoff || Date.parse(r.createdAt) > cutoff), projectId, chatId, text));
 }
 
 // ---- Permanent memory (user-level, explicit saves only). Fails soft: memory never breaks chat. ----
@@ -56,7 +58,7 @@ export const ensureMem = () => (memReady ??= (async () => {
   await d1("CREATE INDEX IF NOT EXISTS idx_user_memories_user ON user_memories(user_id, created_at)");
   await d1("CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_canonical ON user_memories(user_id, canonical_key)");
   await d1("CREATE TABLE IF NOT EXISTS user_memory_state (user_id TEXT PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0, history_blocked INTEGER NOT NULL DEFAULT 0)");
-  await d1("CREATE TRIGGER IF NOT EXISTS memory_delete_privacy AFTER DELETE ON user_memories BEGIN INSERT INTO user_memory_state(user_id, revision, history_blocked) VALUES (OLD.user_id, 1, 1) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = 1; END");
+  await d1("CREATE TRIGGER IF NOT EXISTS memory_delete_privacy AFTER DELETE ON user_memories BEGIN INSERT INTO user_memory_state(user_id, revision, history_blocked) VALUES (OLD.user_id, 1, CAST(strftime('%s','now') AS INTEGER)*1000) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = excluded.history_blocked; END");
   await d1("CREATE TRIGGER IF NOT EXISTS memory_prefs_revision AFTER UPDATE OF prefs ON user_settings BEGIN INSERT INTO user_memory_state(user_id, revision) VALUES (NEW.user_id, 1) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1; END");
 })().catch((e) => { memReady = null; throw e; }));
 
@@ -125,7 +127,7 @@ export async function savePermanentMemory(userId: string, content: string, sourc
       const previous = existing.find((m) => m.id === plan.id);
       // Automatic extraction must never overwrite an explicit instruction/correction.
       if (source === "auto" && previous?.source !== "auto") return previous ? { memory: previous, plan: { kind: "duplicate", id: previous.id } } : null;
-    const r: any[] = await d1(`UPDATE user_memories SET content = ?1, updated_at = ?2, source = ?3, category = ?4, source_ref = ?5, canonical_key = ?6 WHERE content = ?8 AND COALESCE((SELECT revision FROM user_memory_state WHERE user_id = ?10),0) = ?7 AND ${ENABLED_SQL} AND id = ?9 AND user_id = ?10 RETURNING id`, [trimmed, now, source, category, sourceRef ?? null, key, revision, plan.previous, plan.id, userId]);
+      const r: any[] = await d1(`UPDATE user_memories SET content = ?1, updated_at = ?2, source = ?3, category = ?4, source_ref = ?5, canonical_key = ?6 WHERE content = ?8 AND COALESCE((SELECT revision FROM user_memory_state WHERE user_id = ?10),0) = ?7 AND ${ENABLED_SQL} AND id = ?9 AND user_id = ?10 RETURNING id`, [trimmed, now, source, category, sourceRef ?? null, key, revision, plan.previous, plan.id, userId]);
       if (!r.length) return null;
       return { memory: { id: plan.id, content: trimmed, createdAt: now }, plan };
     }
@@ -151,7 +153,7 @@ export async function deletePermanentMemories(userId: string, ids: string[] | "a
   try {
     await ensureMem();
     if (ids === "all") {
-      await d1("INSERT INTO user_memory_state (user_id, revision, history_blocked) VALUES (?, 1, 1) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = 1", [userId]);
+      await d1("INSERT INTO user_memory_state (user_id, revision, history_blocked) VALUES (?, 1, CAST(strftime('%s','now') AS INTEGER)*1000) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = excluded.history_blocked", [userId]);
       return (await d1("DELETE FROM user_memories WHERE user_id = ? RETURNING id", [userId])).length;
     }
     if (!ids.length) return 0;
@@ -187,7 +189,9 @@ export async function editMemory(userId: string, id: string, content: string): P
   if (t.length < 2 || t.length > 500 || memoryPrivacy(t) === "secret") return false;
   try {
     await ensureMem();
-    return (await d1("UPDATE user_memories SET content = ?, updated_at = ?, source = 'explicit', category = ?, canonical_key = ? WHERE id = ? AND user_id = ? RETURNING id", [t, Date.now(), memoryCategory(t), await canonicalKey(t), id, userId])).length > 0;
+    const previous = (await loadPermanentMemoriesStrict(userId)).find((m) => m.id === id);
+    if (!previous) return false;
+    return (await d1("UPDATE user_memories SET content = ?, updated_at = ?, source = 'explicit', category = ?, canonical_key = ? WHERE content = ? AND id = ? AND user_id = ? RETURNING id", [t, Date.now(), memoryCategory(t), await canonicalKey(t), previous.content, id, userId])).length > 0;
   } catch { return false; }
 }
 
@@ -195,7 +199,8 @@ export async function editMemory(userId: string, id: string, content: string): P
 export async function loadPastChatsMemory(userId: string, chatId: string | undefined, text: string): Promise<string> {
   if (!text.trim()) return "";
   // Deletion preserves conversations, but never mines them to resurrect forgotten facts.
-  try { await ensureMem(); const state = await d1("SELECT history_blocked FROM user_memory_state WHERE user_id = ?", [userId]); if (state[0]?.history_blocked) return ""; } catch { return ""; }
+  let cutoff = 0;
+  try { await ensureMem(); const state = await d1("SELECT history_blocked FROM user_memory_state WHERE user_id = ?", [userId]); cutoff = Number(state[0]?.history_blocked ?? 0); } catch { return ""; }
   const { rankPastChats, pastChatsBlock } = await import("./memory");
   const rows: any[] = await d1(
     `SELECT s.id AS chatId, s.title AS title, m.role AS role, m.content AS content, m.created_at AS createdAt
@@ -205,5 +210,5 @@ export async function loadPastChatsMemory(userId: string, chatId: string | undef
     [userId, chatId ?? ""],
   ).catch(() => []);
   const norm = rows.map((r) => ({ chatId: String(r.chatId), title: String(r.title ?? ""), role: String(r.role), content: String(r.content ?? ""), createdAt: String(r.createdAt ?? "") }));
-  return pastChatsBlock(rankPastChats(norm, chatId ?? "", text));
+  return pastChatsBlock(rankPastChats(norm.filter((r) => !cutoff || Date.parse(r.createdAt) > cutoff), chatId ?? "", text));
 }
