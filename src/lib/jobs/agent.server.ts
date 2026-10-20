@@ -1,4 +1,4 @@
-import { extractSource, asksToChangeContent } from "@/lib/ai/references";
+import { extractSource, asksToChangeContent, artifactMatchesSource } from "@/lib/ai/references";
 // Chat agent: understand → plan → run tools → verify outputs → repair once per step → answer.
 import { TOOL_MAP, catalogText, verifyOutput, textOf, type ToolCtx, type WorkFile } from "@/lib/tools/registry.server";
 import { wantsFileContents } from "@/lib/builder/file-delivery";
@@ -116,6 +116,10 @@ export async function runAgent(job: JobRun, input: AgentInput, save: (f: WorkFil
     for (const f of out.files ?? []) {
       const bad = await verifyOutput(f);
       if (bad) throw new Error(`${f.name} failed verification (${bad}) and was not saved.`);
+      if (ctx.verbatim && tool.id === "create_document") {
+        const verified = artifactMatchesSource(await textOf(f),ctx.verbatim);
+        if (!verified.ok) throw new Error("The export did not preserve the original source. No download was delivered.");
+      }
       await job.step("saving_file", `Saving ${f.name}`);
       const ref = await save(f);
       artifacts.push({ id: ref.id, name: f.name, size: f.bytes.length, mime: f.mime });

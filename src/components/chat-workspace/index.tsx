@@ -362,7 +362,7 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
       const privateStart = Date.now();
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
       try {
-        const reply = await streamChat(history, () => {}, tool?.id, { mode: taskMode, webSearch: forceSearch });
+        const reply = await streamChat(history, () => {}, tool?.id, { mode: taskMode, webSearch: forceSearch,incognito:true });
         setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: reply || "I couldn't come up with an answer.", timestamp: new Date(), activity: { seconds: Math.round((Date.now() - privateStart) / 1000), steps: [], failed: !reply } }]);
       } catch (e: any) {
         setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: `Sorry, an error occurred: ${e.message}`, timestamp: new Date(), activity: { seconds: Math.round((Date.now() - privateStart) / 1000), steps: [], failed: true, detail: e.message } }]);
@@ -413,12 +413,18 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
     };
 
     // Explicit tools, files and projects run as backend jobs; everything else is a written answer.
+    const reference = resolveReference(content, messages.map((m) => ({ id: m.id, role: m.role, content: m.content })));
     if (plan?.kind === "agent") {
       clearPhaseTimers(); setIsTyping(false);
-      await runInlineJob("agent_task", { prompt: plan.prompt }, sessionId);
+      if (reference.kind === "ambiguous" || reference.kind === "missing") {
+        const reply = { id:crypto.randomUUID(),role:"assistant" as const,content:reference.kind === "ambiguous" ? reference.question : reference.reason,timestamp:new Date() };
+        setMessages((prev) => [...prev,reply]);
+        if (sessionId) await persistChatMessages(sessionId,[...messages,userMsg,reply]);
+        return;
+      }
+      await runInlineJob("agent_task", { prompt: plan.prompt + (reference.kind === "found" ? `\n\n${sourceBlock(reference)}` : "") }, sessionId);
       return;
     }
-    const reference = resolveReference(content, messages.map((m) => ({ id: m.id, role: m.role, content: m.content })));
     const referencedWorkbook = reference.kind === "found" && /\bSales_Data\b/.test(reference.content) && /\bRegional_Analysis\b/.test(reference.content);
     const route = plan ? ({ kind: "chat" } as const) : referencedWorkbook && /\b(?:xlsx|csv)\b/i.test(content)
       ? ({ kind: "long_context" } as const) : routeRequest(content, taskMode ?? mode);

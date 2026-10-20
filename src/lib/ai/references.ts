@@ -1,6 +1,7 @@
 // Conversation reference resolution. Pure, browser-safe, tested (src/test/conversation-context.test.ts).
 // Resolves "your first response", "the previous answer", "the second story", "what I shared above" to the
 // exact original message of THIS conversation, so tools and models get real content, never the phrase.
+import { conversationArtifacts, selectArtifact } from "./intelligence";
 
 export type ConvMsg = { id?: string; role: "user" | "assistant"; content: unknown };
 export type Resolution =
@@ -16,6 +17,10 @@ const isNotice = (t: string) => /^(Working on it|Writing your file|Building your
 
 /** Finds a reference in `request` and resolves it against `history` (which must NOT include the current message). */
 export function resolveReference(request: string, history: ConvMsg[]): Resolution {
+  if (isContentAction(request)) {
+    const selected = selectArtifact(request, conversationArtifacts(history));
+    if (selected.kind !== "none") return selected;
+  }
   const t = request.toLowerCase();
   const assistants = history.map((m, i) => ({ m, i, text: textOf(m.content) })).filter((x) => x.m.role === "assistant" && !isNotice(x.text));
   const users = history.map((m, i) => ({ m, i, text: textOf(m.content) })).filter((x) => x.m.role === "user");
