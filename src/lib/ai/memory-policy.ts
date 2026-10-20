@@ -1,6 +1,4 @@
 // Browser-safe privacy and command policy; no model call can authorize a mutation.
-import type { PermanentMemory } from "./memory";
-
 export type MemoryCategory = "preference" | "profile" | "project" | "instruction" | "context";
 export function memoryCategory(text: string): MemoryCategory {
   if (/\b(?:always|never|from now on)\b/i.test(text)) return "instruction";

@@ -29,6 +29,7 @@ export async function handleChatMemory(input: { userId: string; chatId?: string;
   }
   if (cmd.action === "save") {
     if (memoryPrivacy(cmd.content) === "secret") return { ...empty, reply: "I won't store passwords, tokens, financial identifiers, or other secrets in memory." };
+    if (memoryPrivacy(cmd.content) === "consent" && detectMemoryCommand(input.text).action === "save_context") return { ...empty, reply: "That detail is private. If you want it saved, explicitly say “Remember that…” followed by the exact detail." };
     input.emit?.("saving_memory");
     const saved = await savePermanentMemory(input.userId, cmd.content, "explicit", input.chatId);
     return { ...empty, reply: !saved ? "I couldn't save that memory. Please try again." : saved.plan.kind === "replace" ? `Updated my saved memory: ${saved.memory.content}` : `I'll remember: ${saved.memory.content}` };
@@ -48,7 +49,7 @@ export async function handleChatMemory(input: { userId: string; chatId?: string;
     if (match.kind === "none") return { ...empty, reply: "No saved memory matches that detail. Nothing was deleted." };
     input.emit?.("deleting_memory");
     const n = await deletePermanentMemories(input.userId, [match.memory.id]);
-    return { ...empty, reply: n === null ? "I couldn't delete that memory. Please try again." : "That saved memory has been deleted. Your chats are unchanged." };
+    return { ...empty, reply: n === null ? "I couldn't delete that memory. Please try again." : n === 0 ? "That memory was already removed. Your chats are unchanged." : "That saved memory has been deleted. Your chats are unchanged." };
   }
   if (cmd.action === "recall") {
     if (!list) return { ...empty, reply: "I couldn't check your saved memories. Please try again." };

@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/useSettings";
 import { SettingsPage, SettingsSection, SettingsToggle } from "@/components/settings/settings-ui";
 import { clearMemories, deleteMemory, editMemory, listMemories, type MemoryItem } from "@/lib/memory-client";
+import { useNavigate } from "@/lib/router-compat";
 
 export default function MemorySettings() {
+  const navigate = useNavigate();
   const { prefs, update, loading } = useSettings();
   const [items, setItems] = useState<MemoryItem[] | null>(null);
   const [error, setError] = useState("");
@@ -58,6 +60,7 @@ export default function MemorySettings() {
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-sm text-foreground">{m.content}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{m.source === "auto" ? "Learned from chat" : "You asked to remember"} · {m.category ?? "context"} · {m.status ?? "active"} · {new Date(m.updatedAt).toLocaleDateString()}</p>
+                      {m.sourceRef && /^[\w-]{1,64}$/.test(m.sourceRef) && <Button variant="ghost" size="sm" onClick={() => navigate(`/chat/${m.sourceRef}`)}>Source chat</Button>}
                     </div>
                     <Button size="icon" variant="ghost" aria-label="Edit memory" onClick={() => setEditing({ id: m.id, text: m.content })}><Pencil className="size-4" /></Button>
                     <Button size="icon" variant="ghost" aria-label="Delete memory" disabled={busy} onClick={() => run(() => deleteMemory(m.id), "Memory deleted")}><Trash2 className="size-4" /></Button>
