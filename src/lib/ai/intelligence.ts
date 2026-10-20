@@ -15,7 +15,8 @@ export function relevantConversation(text:string,history:ConvMsg[],budget=8000):
   const ranked=history.map((m,index)=>({m,index,score:terms.filter(t=>typeof m.content === "string" && contextTerms(m.content.slice(0,12000)).includes(t)).length})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score||b.index-a.index);
   const picked=new Set<number>();let used=0;
   for(const r of ranked){
-    for(const index of r.m.role === "assistant" ? [r.index-1,r.index] : [r.index,r.index+1]){
+    const pair = r.m.role === "assistant" && history[r.index-1]?.role === "user" ? [r.index-1,r.index] : r.m.role === "user" && history[r.index+1]?.role === "assistant" ? [r.index,r.index+1] : [r.index];
+    for(const index of pair){
       const m=history[index];if(!m||picked.has(index)||typeof m.content !== "string")continue;
       if(used+m.content.length>budget)continue;used+=m.content.length;picked.add(index);
     }
