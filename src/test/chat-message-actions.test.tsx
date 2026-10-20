@@ -11,9 +11,9 @@ describe("completed response controls", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     const { rerender } = render(<ChatMessage message={{ ...reply, content: "The entire", responsePending: true }} />);
-    expect(screen.queryByRole("button", { name: "Copy", exact: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Copy" })).toBeNull();
     rerender(<ChatMessage message={reply} />);
-    const copy = await screen.findByRole("button", { name: "Copy", exact: true });
+    const copy = await screen.findByRole("button", { name: "Copy" });
     fireEvent.click(copy);
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(reply.content));
   });
@@ -22,9 +22,9 @@ describe("completed response controls", () => {
     vi.stubGlobal("SpeechSynthesisUtterance", class { text: string; constructor(text: string) { this.text = text; } });
     vi.stubGlobal("speechSynthesis", { speak, cancel });
     render(<ChatMessage message={reply} />);
-    fireEvent.click(screen.getByRole("button", { name: "Speak", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Speak" }));
     expect(speak.mock.calls[0][0].text).toBe(reply.content);
-    fireEvent.click(screen.getByRole("button", { name: "Stop speaking", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop speaking" }));
     expect(cancel).toHaveBeenCalledTimes(2);
     vi.unstubAllGlobals();
   });
@@ -34,7 +34,7 @@ describe("completed response controls", () => {
     Object.defineProperty(navigator, "share", { configurable: true, value: share });
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     render(<ChatMessage message={reply} />);
-    fireEvent.click(screen.getByRole("button", { name: "Share", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(reply.content));
     expect(share).toHaveBeenCalledWith({ title: "Vision reply", text: reply.content });
   });
