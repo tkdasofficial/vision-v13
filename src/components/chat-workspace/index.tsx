@@ -567,7 +567,7 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
         const steps = revealPlan(replyText);
         setIsTyping(false);
         for (const st of steps.slice(0, -1)) {
-          put({ ...reply, content: replyText.slice(0, st.upto) });
+          put({ ...reply, responsePending: true, content: replyText.slice(0, st.upto) });
           await new Promise((res) => setTimeout(res, st.delayMs));
           if (abortRef.current && abortRef.current !== ctrl) break; // a newer request took over
         }

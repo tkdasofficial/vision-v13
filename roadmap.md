@@ -1,5 +1,10 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Completed response actions
+- [ ] Gate all four footer actions on successful completion and full display, including Deep and jobs.
+- [ ] Repair clipboard fallback and check speech, sharing and existing response options.
+- [ ] Run completion/action regression tests and browser checks; no deployment requested.
+
 ## Current request — Complete intelligence system
 - [x] Audit all ten capabilities; preserve existing architecture, identity checks, data and provider configuration.
 - [x] Integrate owner-scoped immutable artifact lineage, bounded subject retrieval and checkpoint-based task commands into chat/file execution.
