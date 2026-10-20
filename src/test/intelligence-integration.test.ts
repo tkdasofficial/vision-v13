@@ -9,6 +9,7 @@ vi.mock("@/lib/cloud/d1.server",() => ({ d1:async (sql:string,p:unknown[]=[]) =>
   if (!state.db) throw new Error("Database missing");
   return state.db.prepare(sql).all(...p as (string|number|null)[]);
 } }));
+vi.mock("@/lib/jobs/llm.server",() => ({ PLANNING:[],complete:vi.fn(async()=>({text:JSON.stringify({steps:[{tool:"create_document",params:{request:"Export original report",format:"pdf",verbatim:true}}]})})) }));
 let store:typeof import("@/lib/ai/intelligence-store.server");
 const report="# Coral Reef Report\n\nThe survey measured 427 coral colonies across twelve coastal sites. Water quality was stable and restoration requires careful monitoring of temperature, turbidity, and coral recovery throughout the year.";
 beforeEach(async () => {
@@ -70,6 +71,23 @@ describe("integrated artifact continuity",() => {
     expect(await store.intelligenceArtifacts("u1","c1")).toEqual([]);
   });
   it("rejects a wrong output source rather than accepting a phrase-only file",()=>expect(artifactMatchesSource("Export that report into PDF",report).ok).toBe(false));
+  it("actual agent execution verifies the original PDF before saving and checkpoint completion",async()=>{
+    history().forEach((m,i)=>message(m.id,m.role,m.content,i));
+    const prepared=await store.prepareIntelligenceJob("u1","c1","Make PDF of that report");
+    const {runAgent}=await import("@/lib/jobs/agent.server");
+    const saved:Uint8Array[]=[];const checkpoints:unknown[]=[];let result:any;
+    const job={id:"job",userId:"u1",step:async()=>{},note:async()=>{},warn:()=>{},markCurrent:()=>{},finish:async(r:unknown)=>{result=r;}};
+    await runAgent(job as any,{prompt:prepared.prompt,files:[]},async(f)=>{saved.push(f.bytes);return{id:"pdf-id"};},{persist:async(cp)=>{checkpoints.push(JSON.parse(JSON.stringify(cp)));}});
+    const {textOf}=await import("@/lib/tools/registry.server");
+    expect(saved).toHaveLength(1);expect(await textOf({name:"report.pdf",mime:"application/pdf",bytes:saved[0]})).toContain("427");
+    expect(result.steps[0].artifacts[0].id).toBe("pdf-id");expect((checkpoints.at(-1) as any).done[0].artifactIds).toEqual(["pdf-id"]);
+  });
+  it("tool selection does not silently pick a wrong attached file",async()=>{
+    const {TOOL_MAP}=await import("@/lib/tools/registry.server");const tool=TOOL_MAP.get("extract_text");if(!tool)throw new Error("Missing extract tool");
+    const ctx={files:[{name:"coral.txt",mime:"text/plain",bytes:new TextEncoder().encode(report)},{name:"volcano.txt",mime:"text/plain",bytes:new TextEncoder().encode("Volcano report")}],lastText:"",complete:async()=>"",note:async()=>{}};
+    await expect(tool.run(ctx,{})).rejects.toThrow("Which file");
+    await expect(tool.run(ctx,{file:"missing.txt"})).rejects.toThrow("not available");
+  });
   it("migration is additive and idempotent",()=>{
     state.db?.exec(readFileSync("db/main-migrations/0002_intelligence_artifacts.sql","utf8"));
     expect(state.db?.prepare("SELECT count(*) n FROM chat_sessions").get()?.n).toBe(2);

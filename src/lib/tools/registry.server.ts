@@ -29,7 +29,9 @@ const kindOf = (f: WorkFile) => {
 };
 function pick(c: ToolCtx, p: any, want?: string[]): WorkFile {
   const list = c.files.filter((f) => !want || want.includes(kindOf(f)));
-  const f = (p?.file && list.find((x) => x.name === p.file)) || list[list.length - 1];
+  if (p?.file && !list.some((x) => x.name === p.file)) throw new Error("The selected file is not available. Choose an attached filename.");
+  if (!p?.file && list.length > 1) throw new Error(`Which file should I use? Choose one: ${list.map((x) => x.name).slice(0,5).join(", ")}`);
+  const f = p?.file ? list.find((x) => x.name === p.file) : list[0];
   if (!f) throw new Error(want ? `This needs a ${want.join(" or ")} file. Attach one in the chat.` : "Attach a file first.");
   return f;
 }
