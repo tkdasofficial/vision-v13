@@ -37,6 +37,7 @@ describe("explicit memory intent", () => {
     expect(detectMemoryCommand('Write a scene saying "turn memory off"').action).toBe("none");
     expect(detectMemoryCommand("Forget it, write a poem instead").action).toBe("none");
     expect(userMemoryTarget([{ role: "assistant", content: "Your city is Paris" }]).kind).toBe("clarify");
+    expect(detectMemoryCommand("Update your memory only for this chat: my name is Mira").action).toBe("none");
   });
   it("clarifies missing update targets instead of changing anything", async () => {
     await store.savePermanentMemory("u1", "my favorite color is teal");
@@ -199,6 +200,7 @@ describe("privacy and relevance", () => {
     expect(detectAutoMemory("Today I live in Paris")).toBeNull();
     expect(detectAutoMemory('He said "my name is Mira"')).toBeNull();
     expect(detectAutoMemory("I'm building a lighthouse management project")).toBe("I'm building a lighthouse management project");
+    expect(detectAutoMemory("Always use metric units")).toBe("Always use metric units");
   });
   it("contextual save of private information asks for explicit consent", async () => {
     await run("Remember this", { history: [{ role: "user", content: "My home address is 10 Example Road" }] });

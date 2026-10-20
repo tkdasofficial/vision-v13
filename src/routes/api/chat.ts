@@ -93,7 +93,7 @@ export const Route = createFileRoute("/api/chat")({
           if (result.block) system += `\n\n${result.block}`;
           // Recheck authoritative switches after commands, before all cross-chat retrieval.
           const fresh = parsePrefs((await loadChatContext(caller.user.id, chatId)).prefsRaw);
-          if (memoryReply || body?.incognito === true || !fresh.savedMemories) return;
+          if (memoryReply || body?.incognito === true) return;
           if (chatCtx.projectId && chatId && fresh.chatHistory) {
             emitMem?.("remembering");
             const pm = await loadProjectMemory(caller.user.id, chatCtx.projectId, chatId, lastText);
