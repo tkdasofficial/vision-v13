@@ -16,7 +16,9 @@ export async function handleChatMemory(input: { userId: string; chatId?: string;
     const ok = await setMemoryEnabled(input.userId, enabled);
     return { ...empty, reply: ok ? enabled ? "Memory is back on." : "Memory is off. Your saved memories are preserved." : "I couldn't change memory right now. Please try again." };
   }
-  const prefs = parsePrefs((await loadChatContext(input.userId, input.chatId)).prefsRaw);
+  const context = await loadChatContext(input.userId, input.chatId);
+  if (!context.owned) return { ...empty, reply: cmd.action === "none" ? null : "I couldn't check this chat's saved memory access. Please try again." };
+  const prefs = parsePrefs(context.prefsRaw);
   const deleting = cmd.action === "forget" || cmd.action === "forget_all" || cmd.action === "forget_context";
   if (!prefs.savedMemories && !deleting) return { ...empty, reply: cmd.action === "none" ? null : "Memory is off. Say “Turn memory back on” to enable it.", block: "Saved memory is off. Do not claim to save or recall permanent memories." };
   if (cmd.action === "update_context") return { ...empty, reply: "Which saved fact changed, and what should replace it?" };

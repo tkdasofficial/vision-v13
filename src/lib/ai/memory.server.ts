@@ -107,6 +107,8 @@ export async function savePermanentMemory(userId: string, content: string, sourc
   if (trimmed.length < 2 || trimmed.length > 500 || memoryPrivacy(trimmed) === "secret" || (source === "auto" && memoryPrivacy(trimmed) !== "safe")) return null;
   try {
     await ensureMem();
+    const enabled = (await d1("SELECT COALESCE((SELECT json_extract(CASE WHEN json_valid(prefs) THEN prefs ELSE '{}' END, '$.savedMemories') FROM user_settings WHERE user_id = ? LIMIT 1),1) AS enabled", [userId]))[0]?.enabled;
+    if (enabled === 0) return null;
     const state = (await d1("SELECT revision FROM user_memory_state WHERE user_id = ?", [userId]))[0];
     const revision = Number(state?.revision ?? 0);
     if (expectedRevision !== undefined && expectedRevision !== revision) return null;
@@ -123,7 +125,7 @@ export async function savePermanentMemory(userId: string, content: string, sourc
       const previous = existing.find((m) => m.id === plan.id);
       // Automatic extraction must never overwrite an explicit instruction/correction.
       if (source === "auto" && previous?.source !== "auto") return previous ? { memory: previous, plan: { kind: "duplicate", id: previous.id } } : null;
-      const r: any[] = await d1(`UPDATE user_memories SET content = ?1, updated_at = ?2, source = ?3, category = ?4, source_ref = ?5, canonical_key = ?6 WHERE content = ?8 AND COALESCE((SELECT revision FROM user_memory_state WHERE user_id = ?10),0) = ?7 AND ${ENABLED_SQL} AND id = ?9 AND user_id = ?10 RETURNING id`, [trimmed, now, source, category, sourceRef ?? null, key, revision, plan.previous, plan.id, userId]);
+    const r: any[] = await d1(`UPDATE user_memories SET content = ?1, updated_at = ?2, source = ?3, category = ?4, source_ref = ?5, canonical_key = ?6 WHERE content = ?8 AND COALESCE((SELECT revision FROM user_memory_state WHERE user_id = ?10),0) = ?7 AND ${ENABLED_SQL} AND id = ?9 AND user_id = ?10 RETURNING id`, [trimmed, now, source, category, sourceRef ?? null, key, revision, plan.previous, plan.id, userId]);
       if (!r.length) return null;
       return { memory: { id: plan.id, content: trimmed, createdAt: now }, plan };
     }

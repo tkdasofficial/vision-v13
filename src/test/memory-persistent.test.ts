@@ -126,6 +126,29 @@ describe("permanent lifecycle with real SQLite constraints", () => {
     expect((await run("Forget my city")).auto).toBeNull();
     expect((await run("Turn memory off")).auto).toBeNull();
   });
+  it("deferred extraction is invalidated by off/on changes before it begins", async () => {
+    const pending = await run("I live in Kolkata");
+    await store.setMemoryEnabled("u1", false);
+    await store.setMemoryEnabled("u1", true);
+    await pending.auto?.();
+    expect(await store.loadPermanentMemories("u1")).toEqual([]);
+  });
+  it("deferred extraction is invalidated by clear before it begins", async () => {
+    const pending = await run("I live in Kolkata");
+    await store.deletePermanentMemories("u1", "all");
+    await pending.auto?.();
+    expect(await store.loadPermanentMemories("u1")).toEqual([]);
+  });
+  it("disabled duplicate save cannot falsely confirm a new save", async () => {
+    await store.savePermanentMemory("u1", "my dog is Bruno");
+    await store.setMemoryEnabled("u1", false);
+    expect(await store.savePermanentMemory("u1", "my dog is Bruno")).toBeNull();
+  });
+  it("independent Settings patches preserve the other switch and unrelated preferences", async () => {
+    await store.setMemorySwitches("u1", { savedMemories: false });
+    await store.setMemorySwitches("u1", { chatHistory: true });
+    expect(JSON.parse(String(state.db?.prepare("SELECT prefs FROM user_settings WHERE user_id='u1'").get()?.prefs))).toEqual({ tone: "formal", savedMemories: false, chatHistory: true });
+  });
   it("database failures never confirm mutations or claim empty recall", async () => {
     await store.savePermanentMemory("u1", "my dog is Bruno"); state.fail = true;
     const r = await run("Forget my dog"); expect(r.reply).toContain("couldn't");
