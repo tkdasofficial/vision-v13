@@ -1,9 +1,9 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
 ## Current request — Completed response actions
-- [ ] Gate all four footer actions on successful completion and full display, including Deep and jobs.
-- [ ] Repair clipboard fallback and check speech, sharing and existing response options.
-- [ ] Run completion/action regression tests and browser checks; no deployment requested.
+- [x] Gate all four footer actions on successful completion and full display, including Deep, failed/stopped replies and jobs; reveal fragments carry a UI-only pending flag.
+- [x] Share clipboard fallback across footer/block Copy and Share; queue long speech safely; copy actual visible story/job result; synchronize JobCard updates back to footer. Fourth control remains existing More options (Report/Delete/Branch), not a new Edit feature.
+- [x] Full regression: 1,719 passed, one optional fixture skipped; 25 focused tests rerun after test-type correction; final preview build OK. Isolated real-component browser check verifies partial/footer gating, full clipboard readback, share fallback and branch callback; desktop/mobile screenshots checked at 360px with no overflow. Native audible speech and authenticated persistence remain unverified; no deployment requested.
 
 ## Current request — Complete intelligence system
 - [x] Audit all ten capabilities; preserve existing architecture, identity checks, data and provider configuration.
