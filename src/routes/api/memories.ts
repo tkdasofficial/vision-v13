@@ -24,27 +24,30 @@ export const Route = createFileRoute("/api/memories")({
         const g = await guard(request, false);
         if (g.res) return g.res;
         const { listMemoryItems } = await import("@/lib/ai/memory.server");
-        const items = await listMemoryItems(g.userId!);
+        if (!g.userId) return Response.json({ error: "Please sign in." }, { status: 401 });
+        const items = await listMemoryItems(g.userId);
         if (!items) return Response.json({ error: "Couldn't load memories. Try again." }, { status: 503 });
         return Response.json({ memories: items }, { headers: noStore });
       },
       PATCH: async ({ request }) => {
         const g = await guard(request, true);
         if (g.res) return g.res;
+        if (!g.userId) return Response.json({ error: "Please sign in." }, { status: 401 });
         const body: any = await request.json().catch(() => ({}));
         if (!ID.test(String(body?.id ?? "")) || typeof body?.content !== "string") return Response.json({ error: "Invalid memory." }, { status: 400 });
         const { editMemory } = await import("@/lib/ai/memory.server");
-        const ok = await editMemory(g.userId!, body.id, body.content);
+        const ok = await editMemory(g.userId, body.id, body.content);
         return ok ? Response.json({ ok: true }) : Response.json({ error: "Couldn't save this memory." }, { status: 400 });
       },
       DELETE: async ({ request }) => {
         const g = await guard(request, true);
         if (g.res) return g.res;
+        if (!g.userId) return Response.json({ error: "Please sign in." }, { status: 401 });
         const body: any = await request.json().catch(() => ({}));
         const ids = body?.all === true ? "all" : Array.isArray(body?.ids) ? body.ids.filter((x: unknown) => typeof x === "string" && ID.test(x)).slice(0, 100) : [];
         if (ids !== "all" && !ids.length) return Response.json({ error: "Nothing to delete." }, { status: 400 });
         const { deletePermanentMemories } = await import("@/lib/ai/memory.server");
-        const n = await deletePermanentMemories(g.userId!, ids);
+        const n = await deletePermanentMemories(g.userId, ids);
         return n === null ? Response.json({ error: "Couldn't delete. Try again." }, { status: 503 }) : Response.json({ deleted: n });
       },
     },

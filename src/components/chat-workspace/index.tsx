@@ -518,7 +518,7 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
         setMessages((prev) => prev.some((m) => m.id === replyId)
           ? prev.map((m) => (m.id === replyId ? { ...m, content: visible } : m))
           : [...prev, { id: replyId, role: "assistant", content: visible, timestamp: new Date(), toolId: tool?.id }]);
-      }, tool?.id, { mode: taskMode, webSearch: forceSearch, onMeta: (m) => { meta = m; }, signal: ctrl.signal, requestId: replyId, conversationId: sessionId ?? undefined,
+      }, tool?.id, { mode: taskMode, webSearch: forceSearch, incognito: isIncognito, onMeta: (m) => { meta = m; }, signal: ctrl.signal, requestId: replyId, conversationId: sessionId ?? undefined,
         onTask: (ev) => { taskRef = applyTaskEvent(taskRef, ev, replyId); requestSteps = (taskRef?.history ?? []).map((stage) => workStateLabel(workStateForStage(stage))).filter((v): v is string => Boolean(v)); setTaskState(taskRef); },
         onStatus: (st, detail) => { const ds = STATUS_MAP[st]; if (!deep || !ds) return; deepReal = true; lastDeep = { stage: ds, detail }; deepHist.push(ds); setMessages((prev) => prev.some((m) => m.id === replyId) ? prev.map((m) => (m.id === replyId ? { ...m, deep: { stage: ds, detail } } : m)) : prev); } }).finally(() => { stopDeepTimers(); if (abortRef.current === ctrl) abortRef.current = null; setStreaming(false); });
       const stopped = ctrl.signal.aborted;
@@ -541,7 +541,7 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
         } catch { /* keep the report as a normal chat reply */ }
       }
       // "Memory updated" notice: only when the database shows a memory written during this reply.
-      if (finalText && !stopped) {
+      if (finalText && !stopped && !isIncognito) {
         try {
           const { listMemories, changedSince } = await import("@/lib/memory-client");
           if (changedSince(await listMemories(), taskStart)) reply = { ...reply, memoryUpdated: true };
