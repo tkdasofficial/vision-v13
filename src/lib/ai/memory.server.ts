@@ -67,13 +67,18 @@ async function canonicalKey(content: string): Promise<string> {
 }
 
 /** Patch only the memory switches; unrelated settings survive concurrent changes. */
-export async function setMemoryEnabled(userId: string, enabled: boolean): Promise<boolean> {
+export async function setMemorySwitches(userId: string, patch: { savedMemories?: boolean; chatHistory?: boolean }): Promise<boolean> {
   try {
     await ensureMem();
-    const rows = await d1("UPDATE user_settings SET prefs = json_set(CASE WHEN json_valid(prefs) THEN prefs ELSE '{}' END, '$.savedMemories', json(?), '$.chatHistory', json(?)), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE user_id = ? RETURNING id", [JSON.stringify(enabled), JSON.stringify(enabled), userId]);
+    const rows = await d1("UPDATE user_settings SET prefs = json_patch(CASE WHEN json_valid(prefs) THEN prefs ELSE '{}' END, ?), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE user_id = ? RETURNING id", [JSON.stringify(patch), userId]);
     if (rows.length) return true;
-    return (await d1("INSERT INTO user_settings (id, user_id, prefs) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE user_id = ?) RETURNING id", [crypto.randomUUID(), userId, JSON.stringify({ savedMemories: enabled, chatHistory: enabled }), userId])).length > 0;
+    return (await d1("INSERT INTO user_settings (id, user_id, prefs) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE user_id = ?) RETURNING id", [crypto.randomUUID(), userId, JSON.stringify(patch), userId])).length > 0;
   } catch { return false; }
+}
+export const setMemoryEnabled = (userId: string, enabled: boolean) => setMemorySwitches(userId, { savedMemories: enabled, chatHistory: enabled });
+
+export async function memoryRevision(userId: string): Promise<number | null> {
+  try { await ensureMem(); const rows = await d1("SELECT revision FROM user_memory_state WHERE user_id = ?", [userId]); return Number(rows[0]?.revision ?? 0); } catch { return null; }
 }
 
 /** Like loadPermanentMemories but null on failure, so callers can tell "none stored" from "couldn't read". */
@@ -97,13 +102,14 @@ export type SaveResult = { memory: PermanentMemory; plan: WritePlan } | null;
  * Saves a fact for this user only. Duplicate → no-op, same subject → replaced (latest wins),
  * else inserted. Returns null on any failure so callers never claim a save that didn't happen.
  */
-export async function savePermanentMemory(userId: string, content: string, source: "explicit" | "auto" = "explicit", sourceRef?: string): Promise<SaveResult> {
+export async function savePermanentMemory(userId: string, content: string, source: "explicit" | "auto" = "explicit", sourceRef?: string, expectedRevision?: number): Promise<SaveResult> {
   const trimmed = content.trim();
   if (trimmed.length < 2 || trimmed.length > 500 || memoryPrivacy(trimmed) === "secret" || (source === "auto" && memoryPrivacy(trimmed) !== "safe")) return null;
   try {
     await ensureMem();
     const state = (await d1("SELECT revision FROM user_memory_state WHERE user_id = ?", [userId]))[0];
     const revision = Number(state?.revision ?? 0);
+    if (expectedRevision !== undefined && expectedRevision !== revision) return null;
     const existing = await loadPermanentMemoriesStrict(userId);
     const plan = planMemoryWrite(existing, trimmed);
     const now = Date.now();

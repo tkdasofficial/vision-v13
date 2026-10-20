@@ -34,6 +34,20 @@ export const Route = createFileRoute("/api/memories")({
         if (g.res) return g.res;
         if (!g.userId) return Response.json({ error: "Please sign in." }, { status: 401 });
         const body: any = await request.json().catch(() => ({}));
+        if (body?.switches && typeof body.switches === "object") {
+          const patch: { savedMemories?: boolean; chatHistory?: boolean } = {};
+          for (const key of ["savedMemories", "chatHistory"] as const) {
+            if (body.switches[key] !== undefined) {
+              if (typeof body.switches[key] !== "boolean") return Response.json({ error: "Invalid memory setting." }, { status: 400 });
+              patch[key] = body.switches[key];
+            }
+          }
+          if (!Object.keys(patch).length) return Response.json({ error: "No memory setting supplied." }, { status: 400 });
+          const { setMemorySwitches, loadChatContext } = await import("@/lib/ai/memory.server");
+          if (!await setMemorySwitches(g.userId, patch)) return Response.json({ error: "Couldn't save memory settings." }, { status: 503 });
+          const { parsePrefs } = await import("@/lib/settings");
+          return Response.json({ prefs: parsePrefs((await loadChatContext(g.userId, undefined)).prefsRaw) }, { headers: noStore });
+        }
         if (!ID.test(String(body?.id ?? "")) || typeof body?.content !== "string") return Response.json({ error: "Invalid memory." }, { status: 400 });
         const { editMemory } = await import("@/lib/ai/memory.server");
         const ok = await editMemory(g.userId, body.id, body.content);

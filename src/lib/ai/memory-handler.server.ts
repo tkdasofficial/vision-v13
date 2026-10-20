@@ -1,8 +1,8 @@
 // One owner-scoped dispatcher shared by every chat mode. Explicit commands never need a provider.
-import { detectMemoryCommand, matchForget, relevantMemories, permanentMemoryBlock, detectAutoMemory, includesPersonal } from "./memory";
+import { detectMemoryCommand, matchForget, relevantMemories, permanentMemoryBlock, detectAutoMemory, includesPersonal, memorySubject } from "./memory";
 import type { MemoryScope, PermanentMemory } from "./memory";
-import { memoryPrivacy, userMemoryTarget, type MemoryTurn } from "./memory-policy";
-import { savePermanentMemory, deletePermanentMemories, tryLoadPermanentMemories, setMemoryEnabled, loadChatContext } from "./memory.server";
+import { memoryPrivacy, normalizeMemory, userMemoryTarget, type MemoryTurn } from "./memory-policy";
+import { savePermanentMemory, deletePermanentMemories, tryLoadPermanentMemories, setMemoryEnabled, loadChatContext, memoryRevision } from "./memory.server";
 import { parsePrefs } from "../settings";
 
 export type MemoryHandling = { reply: string | null; block: string; auto: (() => Promise<unknown>) | null };
@@ -37,6 +37,7 @@ export async function handleChatMemory(input: { userId: string; chatId?: string;
     return { ...empty, reply: count === null ? "I couldn't delete your memories. Please try again." : "Your saved memories have been deleted. Your chats are unchanged." };
   }
   input.emit?.("remembering");
+  const revision = await memoryRevision(input.userId);
   const list = await tryLoadPermanentMemories(input.userId);
   if (cmd.action === "forget") {
     if (!list) return { ...empty, reply: "I couldn't check your saved memories. Nothing was deleted. Please try again." };
@@ -49,13 +50,13 @@ export async function handleChatMemory(input: { userId: string; chatId?: string;
   }
   if (cmd.action === "recall") {
     if (!list) return { ...empty, reply: "I couldn't check your saved memories. Please try again." };
-    const scoped = /\babout (?:me|myself)\b|^(?:show|list)|^what (?:do you|did i) remember/i.test(input.text) ? list : relevantMemories(list, input.text, 4000);
+    const scoped = /\babout (?:me|myself)\b|^(?:show|list)|^what did i (?:ask|tell) you to remember/i.test(input.text) ? list : relevantMemories(list, input.text, 4000);
     return { ...empty, reply: scoped.length ? `Here's what I have saved:\n\n${scoped.map((m) => `- ${m.content}`).join("\n")}` : "I don't have a saved memory matching that request." };
   }
   // Suppress obsolete same-subject legacy facts without destructive backfills.
   const seen = new Set<string>();
-  const current = (list ?? []).filter((m: PermanentMemory) => { const key = m.content.toLowerCase().split(/\s+(?:is|are)\s+/)[0]; if (seen.has(key)) return false; seen.add(key); return true; });
+  const current = (list ?? []).filter((m: PermanentMemory) => { const key = memorySubject(m.content) ?? normalizeMemory(m.content); if (seen.has(key)) return false; seen.add(key); return true; });
   const rel = relevantMemories(current, input.text);
   const fact = detectAutoMemory(input.text);
-  return { reply: null, block: permanentMemoryBlock(rel), auto: fact ? () => savePermanentMemory(input.userId, fact, "auto", input.chatId) : null };
+  return { reply: null, block: permanentMemoryBlock(rel), auto: fact && revision !== null ? () => savePermanentMemory(input.userId, fact, "auto", input.chatId, revision) : null };
 }
