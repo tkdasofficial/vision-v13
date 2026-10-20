@@ -299,8 +299,8 @@ describe("checkpointed semantic story quality", () => {
   });
   it("repairs duplicate narrative paragraphs locally without regenerating approved story", async () => {
     const base = scripted(new Set());
-    const first = "Mira secures the rescue rope to the lighthouse post and watches the stranded boat while Pip crouches beside her yellow raincoat. ".repeat(3);
-    const last = "At dawn the boat crew rests safely in the lighthouse after Mira's careful rescue and Pip's warning meow alerted her to the incoming wave. ".repeat(3);
+    const first = "Mira secures the rescue rope to the lighthouse post and watches the stranded boat while Pip crouches beside her yellow raincoat. ".repeat(4);
+    const last = "At dawn the boat crew rests safely in the lighthouse after Mira's careful rescue and Pip's warning meow alerted her to the incoming wave. ".repeat(4);
     const original = `${first}\n\n${first}\n\n${last}`;
     const replacement = "Mira explains the next step to the boat crew, checks the tension and transfers the rope from the post to the bollard before helping them cross. ".repeat(3);
     let stories = 0, repairs = 0;
