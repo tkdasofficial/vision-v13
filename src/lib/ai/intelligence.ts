@@ -7,7 +7,7 @@ export type ArtifactRecord = {
 };
 export type TaskRecord = { id: string; prompt: string; status: string; resumedBy?: string | null };
 const WORDS = /[\p{L}\p{N}]+/gu;
-const STOP = new Set("the a an this that it to of for please make create use earlier previous latest original full entire complete report document file pdf version task resume continue pause stop revise rewrite edit export convert into as on about me my your".split(" "));
+const STOP = new Set("the a an this that it to of for please make create use earlier previous latest original full entire complete report document file pdf version task resume continue pause stop revise rewrite edit export convert into as on about me my your what which who where when why how is are was were did does do can could would should have has had tell show give want need".split(" "));
 export const contextTerms = (text: string) => [...new Set((text.toLowerCase().match(WORDS) ?? []).filter((s) => s.length > 2 && !STOP.has(s)))];
 /** Bounded subject-based recall outside the recent window, with paired user request and answer. */
 export function relevantConversation(text:string,history:ConvMsg[],budget=8000):ConvMsg[] {
