@@ -37,6 +37,7 @@ export async function loadProjectMemory(userId: string, projectId: string, chatI
      ORDER BY m.created_at DESC LIMIT 120`,
     [userId, projectId, chatId],
   ).catch(() => []);
+  if (!rows.length) return "";
   const norm = rows.map((r) => ({ ...r, role: String(r.role), createdAt: String(r.createdAt ?? ""), content: String(r.content ?? ""), title: String(r.title ?? "") }));
   let cutoff = 0;
   try { await ensureMem(); const state = await d1("SELECT history_blocked FROM user_memory_state WHERE user_id = ?", [userId]); cutoff = Number(state[0]?.history_blocked ?? 0); } catch { return ""; }

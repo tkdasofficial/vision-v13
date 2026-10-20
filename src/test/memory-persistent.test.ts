@@ -17,8 +17,8 @@ let store: typeof import("@/lib/ai/memory.server");
 let handler: typeof import("@/lib/ai/memory-handler.server");
 beforeEach(async () => {
   vi.resetModules(); state.db = new DatabaseSync(":memory:"); state.fail = false; state.beforeWrite = null;
-  state.db.exec("CREATE TABLE user_settings(id TEXT PRIMARY KEY, user_id TEXT, prefs TEXT, updated_at TEXT); CREATE TABLE chat_sessions(id TEXT PRIMARY KEY, user_id TEXT, project_id TEXT); CREATE TABLE workspace_projects(id TEXT, user_id TEXT, memory TEXT); CREATE TABLE chat_messages(id TEXT, session_id TEXT, role TEXT, content TEXT, created_at TEXT);");
-  state.db.exec("INSERT INTO user_settings VALUES('s1','u1','{\"tone\":\"formal\"}',NULL),('s2','u2','{}',NULL); INSERT INTO chat_sessions VALUES('c1','u1',NULL),('c2','u1',NULL),('c3','u2',NULL);");
+  state.db.exec("CREATE TABLE user_settings(id TEXT PRIMARY KEY, user_id TEXT, prefs TEXT, updated_at TEXT); CREATE TABLE chat_sessions(id TEXT PRIMARY KEY, user_id TEXT, project_id TEXT,title TEXT DEFAULT 'test'); CREATE TABLE workspace_projects(id TEXT, user_id TEXT, memory TEXT); CREATE TABLE chat_messages(id TEXT, session_id TEXT, role TEXT, content TEXT, created_at TEXT);");
+  state.db.exec("INSERT INTO user_settings VALUES('s1','u1','{\"tone\":\"formal\"}',NULL),('s2','u2','{}',NULL); INSERT INTO chat_sessions(id,user_id,project_id) VALUES('c1','u1',NULL),('c2','u1',NULL),('c3','u2',NULL);");
   store = await import("@/lib/ai/memory.server"); handler = await import("@/lib/ai/memory-handler.server");
   await store.ensureMem();
 });
