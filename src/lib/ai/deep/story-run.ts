@@ -13,6 +13,8 @@ import {
   dependentScenes,
   budgetStoryMessages,
   STORY_CATEGORIES,
+  STORY_REVIEW_PROMPT,
+  storyReviewIssues,
   type StoryPlan,
   type StoryScene,
   type StoryIssue,
@@ -52,7 +54,7 @@ export type StoryStore = {
 };
 const PLAN = `Plan a story, not its scenes. JSON only with requirements [{id,text,mandatory}], defaults [explicit nonblocking assumptions], blueprint {version:1,premise,arc,worldRules:[],visualStyle,dialogueStyle,entities:[{id,kind:"character|location|prop|event",name,profile}],canonical:[{id,entityId,field,value,requirementId}],initialState:[{entityId,field,value}],timelineRules:[],continuityConstraints:[]}, manifest [{id,order,purpose,locationId,characterIds:[],entityIds:[],requiredEvents:[],emotionalBeat,dependsOn:[],requirementIds:[],before:[{entityId,field,value}],after:[{entityId,field,value}],fields:["action","visual","environment"]}]. All string fields required. Exactly the requested scene count. Stable unique IDs; every mandatory original requirement assigned to scenes. Each scene after the first depends on the preceding scene plus causal dependencies. Preconditions must match the prior boundary. Track location, clothing, injury, possessions, knowledge, relationships, timeline and unresolved threads as relevant. Never change immutable canon. Include dialogue/camera in fields when requested. No arbitrary blueprint size cap. Blocking missing/contradictory requirements must be reported rather than guessed.`;
 const SCENE = `Write one scene as JSON only: {id,blueprintVersion,entityIds:[],eventIds:[],action,visual,dialogue:[{characterId,line}],environment,camera,canonicalFacts:[{factId,value}],changes:[{entityId,field,from:null,to,evidence}],metadata:{timeline,emotionalBeat}}. All text fields are strings. Include required entities/events and exact relevant canonical values. Changes must start from validated state, never change immutable canon, and evidence must be a nonempty exact quote from action, visual or a spoken line. Give this scene a character goal, obstacle and meaningful dramatic turn; show motivation through choices and dialogue subtext rather than exposition. Use the full outline to seed future payoffs without revealing later events early. Visuals and camera must depict the actual action and validated physical state. Knowledge, possessions and recovery require an on-screen cause. Fulfil every original requirement and contract field; keep valid details unchanged during repairs. Creative additions must not contradict canon.`;
-const REVIEW = `Independently review original requirements, canon, scene contracts and validated dependencies. For a plan review mandatory coverage and complete causal manifest; for a scene review story beats, visual/action agreement, dialogue/knowledge and state; for final audit examine the whole story and arc. JSON only: {checks:{story:true,visual:true,dialogue:true,continuity:true,instructions:true,structure:true},issues:[{severity:"critical|warning",category:"story|visual|dialogue|continuity|instructions|structure",sceneId,reference,evidence,correction}]}. False for any unchecked/failed category. Cite canonical fact/original requirement and exact conflicting evidence; name the smallest affected scene. Never pass unresolved critical contradictions.`;
+const REVIEW = STORY_REVIEW_PROMPT;
 const critical = (issues: StoryIssue[]) => issues.some((i) => i.severity === "critical");
 const fail = (sceneId: string, evidence: string): StoryIssue => ({
   severity: "critical",
@@ -62,12 +64,7 @@ const fail = (sceneId: string, evidence: string): StoryIssue => ({
   evidence,
   correction: "Retry this stage against the same approved contract.",
 });
-const reviewIssues = (r: StoryReview, id: string): StoryIssue[] => [
-  ...r.issues,
-  ...STORY_CATEGORIES.filter((c) => !r.checks[c] && !r.issues.some((i) => i.category === c && i.severity === "critical")).map(
-    (category) => ({ ...fail(id, `${category} check failed or was not performed`), category }),
-  ),
-];
+const reviewIssues = storyReviewIssues;
 export function renderStory(run: StoryRun, a: RequestAnalysis): string {
   const p = run.plan;
   if (!p) return "No story plan was approved.";

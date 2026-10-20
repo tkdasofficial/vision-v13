@@ -115,6 +115,12 @@ export async function readRecord(userId: string, recordId: string, db: SandboxDb
   return (await db("SELECT content, checksum FROM generation_records WHERE id = ? AND user_id = ? LIMIT 1", [recordId, userId]))[0] ?? null;
 }
 
+/** Candidate-bound final review/repair state; original prompt and accepted slots stay untouched. */
+export async function saveStoryQuality(userId: string, jobId: string, result: string, db: SandboxDb = sandboxDb): Promise<void> {
+  const rows = await db("UPDATE generation_slots SET result = ?, updated_at = ? WHERE slot_id = 1 AND user_id = ? AND job_id = ? AND status = 'validated' RETURNING slot_id", [result, now(), userId, jobId]);
+  if (!rows.length) throw new Error("Story quality checkpoint could not be saved.");
+}
+
 /** Releases every slot a job holds back to free; used for cleanup and reuse. */
 export async function releaseJobSlots(userId: string, jobId: string, db: SandboxDb = sandboxDb): Promise<number> {
   await ensureSlots(db);
