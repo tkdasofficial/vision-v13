@@ -51,9 +51,10 @@ function StatusIcon({ status }: { status: JobView["status"] }) {
   return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
 }
 
-export default function JobCard({ job: given, onRetry, compact }: { job: JobView; onRetry?: (id: string) => void; compact?: boolean }) {
+export default function JobCard({ job: given, onRetry, compact, onUpdate }: { job: JobView; onRetry?: (id: string) => void; compact?: boolean; onUpdate?: (job: JobView) => void }) {
   const [job, setJob] = useState(given);
   const [viewing, setViewing] = useState<string | null>(null);
+  useEffect(() => { if (job !== given) onUpdate?.(job); }, [job, given, onUpdate]);
   useEffect(() => { setJob((cur) => (cur.id !== given.id || (!isTerminal(cur.status) || isTerminal(given.status)) && Date.parse(given.updatedAt) >= Date.parse(cur.updatedAt) ? given : cur)); }, [given]);
   // Reload the stored state (e.g. after a page refresh) and keep following it until it finishes.
   useEffect(() => {

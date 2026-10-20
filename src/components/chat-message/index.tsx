@@ -19,7 +19,7 @@ import { replyText, canUseReplyActions, speechChunks } from "@/lib/reply-actions
 import { copyToClipboard } from "@/lib/clipboard";
 import { useCopy } from "@/components/chat/use-copy";
 
-type Props = { message: ChatMessageType; isNew?: boolean; fallbackSeconds?: number; onDelete?: (id: string) => Promise<void>; onBranch?: (id: string) => Promise<void>; onReport?: (id: string) => Promise<void> };
+type Props = { message: ChatMessageType; isNew?: boolean; fallbackSeconds?: number; onDelete?: (id: string) => Promise<void>; onBranch?: (id: string) => Promise<void>; onReport?: (id: string) => Promise<void>; onJobUpdate?: (id: string, job: NonNullable<ChatMessageType["job"]>) => void };
 
 /**
  * Persistent activity record for a finished reply: a collapsed "Worked for Ns" row that expands
@@ -208,7 +208,7 @@ const useSegmentedTypewriter = (segments: Segment[], enabled: boolean) => {
 };
 
 
-const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false, fallbackSeconds = 0, onDelete, onBranch, onReport }, ref) => {
+const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false, fallbackSeconds = 0, onDelete, onBranch, onReport, onJobUpdate }, ref) => {
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -230,6 +230,7 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
   const segments = useMemo(() => splitContent(message.content), [message.content]);
   const { charCounts, allDone: typingDone } = useSegmentedTypewriter(segments, shouldAnimate);
   const actionsReady = canUseReplyActions(message, typingDone && segments.every((seg, i) => (charCounts[i] ?? 0) >= seg.content.length));
+  const updateJob = useCallback((job: NonNullable<ChatMessageType["job"]>) => onJobUpdate?.(message.id, job), [message.id, onJobUpdate]);
 
   const size = getMessageSize(message.content);
 
@@ -354,7 +355,7 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
             {message.webApp && (
               <WebAppPreviewCard project={message.webApp} />
             )}
-            {message.job && <JobCard job={message.job} />}
+            {message.job && <JobCard job={message.job} onUpdate={updateJob} />}
             {message.zipAnalysis && (
               <ZipAnalysisCard analysis={message.zipAnalysis} />
             )}
