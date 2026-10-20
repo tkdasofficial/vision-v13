@@ -1,9 +1,10 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
 ## Current request — Truthful task statuses
-- [ ] Reserve Executing for actual terminal commands; trace story/file/chat status producers and displays.
-- [ ] Align displayed stages with recorded backend work without synthetic progress or generation changes.
-- [ ] Test status contracts and rendering; disclose live verification and deployment limits.
+- [x] Generic running/processing, calculation, indexing and Deep work no longer show Executing; only explicit executing_code retains it. The manual terminal alias is checksum-only, not shell execution, so is not falsely labeled Executing.
+- [x] Story workers persist planning/writing/repair/validation/assembly/saving stages at real operation boundaries. Queue handoffs show Queued and polling cannot overwrite them with the previous run's stage; providers, limits and validation unchanged.
+- [x] 49 focused tests and full regression (1,723 passed, one skipped) pass; actual JobCard display inspected on desktop/mobile, no overflow. Preview build OK.
+- [ ] Updated-backend signed-in acceptance — blocked by no usable account session and no deployment requested; preview APIs still use the previously deployed Cloudflare version. No deployment performed.
 
 ## Current request — Completed response actions
 - [x] Gate all four footer actions on successful completion and full display, including Deep, failed/stopped replies and jobs; reveal fragments carry a UI-only pending flag.
