@@ -28,7 +28,11 @@ function scripted(badFirst: Set<number>) {
   const call = async (messages: any[]) => {
     const sys = String(messages[0].content);
     const user = String(messages[1]?.content ?? "");
-    if (sys.startsWith("Create a master blueprint")) { calls.push("blueprint"); return ok("Setting: one cabin. Character: Mara, grey coat."); }
+    if (sys.startsWith("Create a master blueprint")) {
+      calls.push("blueprint");
+      const count = Number(sys.match(/exactly (\d+) ordered beats/)?.[1] ?? 2);
+      return ok(JSON.stringify({ worldRules: ["Realistic"], characters: [{ name: "Mara", appearance: "red hair", clothing: "grey coat", personality: "brave", motivation: "protect others", abilities: "human", limitations: "cannot fly", relationships: "friend" }], visualContinuity: { locations: "cabin", props: "lamp", lighting: "dim", weather: "rain" }, beats: Array.from({ length: count }, (_, i) => ({ scene: i + 1, goal: "help", obstacle: "darkness", consequence: "progress", emotion: "hope", before: "cabin", after: "cabin", transition: "continues", unresolved: "rescue" })) }));
+    }
     if (sys.startsWith("Write the complete story")) { calls.push("story"); return ok(STORY); }
     if (sys.startsWith("Independently review")) { calls.push("review"); return ok(review()); }
     const n = Number(user.match(/Write scene (\d+)/)?.[1] ?? 0);

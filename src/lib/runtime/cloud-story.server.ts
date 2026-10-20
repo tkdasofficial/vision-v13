@@ -17,7 +17,7 @@ import { SLOT_LIMITS } from "../sandbox/slots";
 import { openStoryWorkspace } from "../sandbox/story-workspace.server";
 import { storyDialogueRange, requiresFixedStoryBackground } from "../ai/story-output";
 import { normalizeScene, parseSceneCount, sceneContract, sceneHeadings, scoreScene, assembleStoryDocument, validateAssembled, storyInstructions, checkStory, STORY_LIMITS } from "./cloud-story";
-import { blueprintInstructions, qualityReviewInstructions, parseQualityReview, replaceStoryParagraph, readQualityCheckpoint, QUALITY_LIMITS } from "./story-quality";
+import { blueprintInstructions, qualityReviewInstructions, parseQualityReview, replaceStoryParagraph, readQualityCheckpoint, validateQualityBlueprint, QUALITY_LIMITS } from "./story-quality";
 
 const now = () => new Date().toISOString();
 
@@ -162,6 +162,8 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     ], STORY_LIMITS.maxBlueprintTokens, call);
     if (!r.ok) return fail(userId, jobId, `Blueprint generation failed: ${r.error}`);
     if (!r.recordId || !r.content) return fail(userId, jobId, "Blueprint record is missing.");
+    try { validateQualityBlueprint(r.content, count); }
+    catch { return fail(userId, jobId, "The blueprint lacks complete character profiles or ordered continuity beats; saved draft retained, not approved."); }
     blueprintRef = r.recordId; blueprint = r.content;
     await slots.setSlotStatus(userId, jobId, 3, "validated", { result_ref: blueprintRef });
     await w.blueprint(blueprint);

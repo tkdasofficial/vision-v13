@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseQualityReview, replaceStoryParagraph, blueprintInstructions, readQualityCheckpoint } from "@/lib/runtime/story-quality";
+import { parseQualityReview, replaceStoryParagraph, blueprintInstructions, readQualityCheckpoint, validateQualityBlueprint } from "@/lib/runtime/story-quality";
 import { validateRuntimeStory } from "@/lib/runtime/story-validation";
 import { validateScene, checkStory } from "@/lib/runtime/cloud-story";
 
@@ -35,6 +35,10 @@ describe("structured story quality findings", () => {
   it("legacy metadata does not falsely imply a successful semantic review", () => {
     expect(readQualityCheckpoint('{"score":100}')).toEqual({ version: 1, refs: {}, repairs: {} });
   });
+  it("does not approve an unstructured or incomplete new character blueprint", () => {
+    expect(() => validateQualityBlueprint("Mira and her cat.", 5)).toThrow();
+    expect(() => validateQualityBlueprint(JSON.stringify({ characters: [{ name: "Pip" }], beats: [] }), 5)).toThrow();
+  });
 });
 describe("deterministic story quality gates", () => {
   it("checks default scene counts and alternate prompt counts without explicit fields", () => {
@@ -44,6 +48,10 @@ describe("deterministic story quality gates", () => {
   it("rejects empty visual content and wrong scene numbering", () => {
     expect(validateScene(scene(2, ""), 0, "Create 1 scene")).toContain("Scene 1 has the wrong scene number.");
     expect(validateRuntimeStory(scene(1, ""), "Create 1 scene")).toContain("Scene 1 has empty visual prompt.");
+  });
+  it("rejects a multi-scene candidate and preserves zero-count default semantics", () => {
+    expect(validateScene(scene(1, "Boat.") + scene(2, "Pier."), 0, "Create 2 scenes")).toContain("A scene candidate must contain exactly one scene heading.");
+    expect(validateRuntimeStory(scene(1, "Boat."), "Create 0 scenes")).toContain("Expected exactly 5 ordered scenes.");
   });
   it("rejects repeated long prompts without deleting required scenes or intentional refrains", () => {
     const repeated = "Mira holds the lighthouse rescue rope while Pip watches the struggling fishing boat and the storm waves striking the pier. ".repeat(2);
