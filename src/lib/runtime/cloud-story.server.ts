@@ -200,14 +200,16 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     if (!r.ok) return fail(userId, jobId, `Story generation failed: ${r.error}`);
     await slots.saveSlotProgress(userId, jobId, 2, JSON.stringify({ ref: r.recordId, round }));
     await setStage(job, "validating_story");
-    const storyIssues = checkStory(r.content ?? "");
+    // Paragraph duplicates are local quality findings, not a reason to regenerate
+    // the full narrative. The final quality loop repairs the affected paragraph.
+    const storyIssues = checkStory(r.content ?? "").filter((issue) => !issue.includes("duplicate narrative paragraphs"));
     if (storyIssues.length) {
       if (round >= 1) return fail(userId, jobId, `The story did not meet its format after one regeneration: ${storyIssues.join(" ")}`);
       r = await ask(storyIssues);
       if (!r.ok) return fail(userId, jobId, `Story generation failed: ${r.error}`);
       await slots.saveSlotProgress(userId, jobId, 2, JSON.stringify({ ref: r.recordId, round: 1 }));
       await setStage(job, "validating_story");
-      const still = checkStory(r.content ?? "");
+      const still = checkStory(r.content ?? "").filter((issue) => !issue.includes("duplicate narrative paragraphs"));
       if (still.length) return fail(userId, jobId, `The story did not meet its format after one regeneration: ${still.join(" ")}`);
     }
     if (!r.recordId || !r.content) return fail(userId, jobId, "Story record is missing.");
@@ -354,7 +356,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       }
     }
     const finding = quality.findings?.find((f) => f.severity === "critical");
-    if (!finding) break;
+    if (!finding) { quality.passed = true; break; }
     const target = finding.sceneId === "story" ? finding.reference : finding.sceneId;
     const attempts = quality.repairs[target] ?? 0;
     if (attempts >= QUALITY_LIMITS.perSection || Object.values(quality.repairs).reduce((a, b) => a + b, 0) >= QUALITY_LIMITS.maxRepairs) {
@@ -376,7 +378,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     let structural: string[] = [];
     try {
       revised = index >= 0 ? normalizeScene(response.text, index) : replaceStoryParagraph(story, finding.reference, response.text);
-      structural = index >= 0 ? scoreScene(revised, index, prompt).issues : checkStory(revised);
+      structural = index >= 0 ? scoreScene(revised, index, prompt).issues : checkStory(revised).filter((issue) => !issue.includes("duplicate narrative paragraphs"));
     } catch (error) { structural = [safeError(error)]; }
     if (!structural.length) {
       const key = index >= 0 ? finding.sceneId : "story";

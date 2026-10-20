@@ -297,6 +297,25 @@ describe("checkpointed semantic story quality", () => {
     await runCloudStoryJob(job, PROMPT, { call: s.call });
     expect(s.calls.filter((c) => c === "review")).toHaveLength(2);
   });
+  it("repairs duplicate narrative paragraphs locally without regenerating approved story", async () => {
+    const base = scripted(new Set());
+    const first = "Mira secures the rescue rope to the lighthouse post and watches the stranded boat while Pip crouches beside her yellow raincoat. ".repeat(3);
+    const last = "At dawn the boat crew rests safely in the lighthouse after Mira's careful rescue and Pip's warning meow alerted her to the incoming wave. ".repeat(3);
+    const original = `${first}\n\n${first}\n\n${last}`;
+    const replacement = "Mira explains the next step to the boat crew, checks the tension and transfers the rope from the post to the bollard before helping them cross. ".repeat(3);
+    let stories = 0, repairs = 0;
+    const call = async (messages: any[]) => {
+      const system = String(messages[0].content);
+      if (system.startsWith("Write the complete story")) { stories++; return ok(original); }
+      if (system.startsWith("Repair only the identified story paragraph")) { repairs++; return ok(replacement); }
+      return base.call(messages);
+    };
+    await runCloudStoryJob(new JobRun("job-paragraph-repair", "user-1"), PROMPT, { call });
+    expect(stories).toBe(1);
+    expect(repairs).toBe(1);
+    expect(h.artifact).toContain(`${first.trim()}\n\n${replacement.trim()}\n\n${last.trim()}`);
+    expect(h.artifact).toContain("## Scene 2");
+  });
 });
 
 describe("scene repair keeps the best version", () => {
