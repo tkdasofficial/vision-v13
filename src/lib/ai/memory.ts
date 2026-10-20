@@ -5,6 +5,7 @@
 //                personal custom instructions are NOT applied, so nothing personal leaks into the project.
 // Missing/deleted projects or failed lookups fall back to "none" so chat keeps working.
 import { fenceUntrusted } from "./context";
+import { memoryPrivacy, normalizeMemory } from "./memory-policy";
 
 export type MemoryScope = "none" | "default" | "project";
 
@@ -12,7 +13,7 @@ export type MemoryScope = "none" | "default" | "project";
 // Only explicit "remember …" phrasing saves; anything else would store guesses as facts.
 // Permanent memory is personal, so it is never injected under the "project" scope.
 
-export type PermanentMemory = { id: string; content: string; createdAt: number };
+export type PermanentMemory = { id: string; content: string; createdAt: number; source?: string; category?: string; sourceRef?: string };
 
 export type MemoryRequest =
   | { action: "save"; content: string }
@@ -92,7 +93,9 @@ export function projectContextBlock(rows: (ProjectNote & { projectId: string })[
 export type MemoryCommand =
   | MemoryRequest
   | { action: "forget"; query: string }
-  | { action: "forget_all" };
+  | { action: "forget_all" }
+  | { action: "enable" | "disable" }
+  | { action: "save_context" | "forget_context" | "update_context" };
 
 const FORGET_ALL_RE = /^\s*(?:please\s+)?(?:forget|delete|erase|clear|wipe)\s+(?:all(?:\s+(?:of\s+)?(?:your\s+|my\s+)?(?:permanent\s+)?memor(?:y|ies))?|everything\s+(?:you\s+)?(?:remember|know)\s+about\s+me)\s*[.!]?\s*$/i;
 const FORGET_RE = /^\s*(?:please\s+)?(?:forget|stop remembering)\s+(?:that\s+|about\s+)?(.+?)\s*[.!]?\s*$/is;
@@ -102,8 +105,20 @@ const UPDATE_RE = /^\s*(?:please\s+)?(?:update\s+(?:your\s+|my\s+)?memory(?:\s+t
 
 /** Full memory command detection: save, update (treated as save with conflict replacement), recall, forget. */
 export function detectMemoryCommand(text: string): MemoryCommand {
-  const t = text.trim();
+  const t = text.trim().replace(/’/g, "'").replace(/\b(?:remeber|rember|rememeber)\b/gi, "remember").replace(/\bmemm?ory\b/gi, "memory");
   if (!t) return { action: "none" };
+  if (/^(?:please\s+)?(?:(?:turn|switch)\s+(?:my |your )?memory\s+(?:back )?on|enable memory|resume remembering(?: things)?)[.!]?$/i.test(t)) return { action: "enable" };
+  if (/^(?:please\s+)?(?:(?:turn|switch)\s+(?:my |your )?memory\s+off|disable memory|stop remembering(?: things)?|don't remember (?:anything|things)(?: anymore)?)[.!]?$/i.test(t)) return { action: "disable" };
+  if (/^(?:please\s+)?(?:remember (?:this|that)|save (?:this|that) to memory|keep (?:this|that) in mind)[.!]?$/i.test(t)) return { action: "save_context" };
+  if (/^(?:please\s+)?(?:forget (?:this|that)|(?:don't|do not) remember (?:this|that))[.!]?$/i.test(t)) return { action: "forget_context" };
+  if (/^(?:please\s+)?(?:that has changed|update what you remember|update (?:this|that) in memory)[.!]?$/i.test(t)) return { action: "update_context" };
+  if (/^(?:remember what i (?:told|said to) you about|what do you remember about)\b/i.test(t)) return { action: "recall" };
+  const naturalSave = t.match(/^(?:please\s+)?(?:save (?:this )?to memory|keep (?:this )?in mind)\s*[:—-]\s*(.+)$/is);
+  if (naturalSave && naturalSave[1].trim().length >= 2 && naturalSave[1].trim().length <= 500) return { action: "save", content: naturalSave[1].trim() };
+  const naturalForget = t.match(/^(?:please\s+)?(?:don't remember|do not remember|forget what i told you about)\s+(.+?)[.!]?$/is);
+  if (naturalForget && naturalForget[1].length <= 300) return { action: "forget", query: naturalForget[1].trim() };
+  const naturalUpdate = t.match(/^(?:please\s+)?(?:update what you remember|that has changed|actually)\s*[:,—-]\s*(.+)$/is);
+  if (naturalUpdate && naturalUpdate[1].trim().length >= 2 && naturalUpdate[1].length <= 500) return { action: "save", content: naturalUpdate[1].trim() };
   if (FORGET_ALL_RE.test(t)) return { action: "forget_all" };
   const del = t.match(DELETE_MEM_RE) ?? t.match(DELETE_MEM2_RE) ?? t.match(FORGET_RE);
   const conversational = /^(?:it|this|that|everything (?:above|before)|what i (?:said|asked)|my (?:last|previous)|the (?:previous|last|above))\b/i;
@@ -113,13 +128,13 @@ export function detectMemoryCommand(text: string): MemoryCommand {
   return detectMemoryRequest(t);
 }
 
-const STOP = new Set(["the", "that", "this", "and", "about", "you", "your", "are", "was", "for", "with", "from", "memory", "remember", "please", "what", "have"]);
+const STOP = new Set(["the", "that", "this", "and", "about", "you", "your", "are", "was", "for", "with", "from", "memory", "remember", "please", "what", "have", "told", "said", "project"]);
 const ALIASES: Record<string, string> = { favourite: "favorite", colour: "color", shade: "color", hometown: "city", concise: "brief", brevity: "brief" };
 const words = (s: string) => (s.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []).filter((w) => !STOP.has(w)).map((w) => ALIASES[w] ?? w);
 
 /** Subject of a fact ("my favorite color is teal" → "my favorite color"), used to detect conflicts. */
 export function memorySubject(content: string): string | null {
-  const c = content.toLowerCase().replace(/\bfavourite\b/g, "favorite").replace(/\bcolour\b/g, "color").replace(/[.!]+$/, "").trim();
+  const c = normalizeMemory(content).replace(/^i'm based in\b/, "i am based in");
   const m = c.match(/^(.{3,60}?)\s+(?:is|are|=)\s+.+$/) ?? c.match(/^(i (?:live in|work at|work as|am based in|prefer)|call me)\s+.+$/);
   return m ? m[1].replace(/\s+/g, " ").trim() : null;
 }
@@ -128,8 +143,8 @@ export type WritePlan = { kind: "insert" } | { kind: "duplicate"; id: string } |
 
 /** Decides how a new fact lands: exact duplicate → no-op, same subject → replace (latest wins), else insert. */
 export function planMemoryWrite(existing: PermanentMemory[], content: string): WritePlan {
-  const norm = content.trim().toLowerCase();
-  const dup = existing.find((m) => m.content.trim().toLowerCase() === norm);
+  const norm = normalizeMemory(content);
+  const dup = existing.find((m) => normalizeMemory(m.content) === norm);
   if (dup) return { kind: "duplicate", id: dup.id };
   const subj = memorySubject(content);
   if (subj) {
@@ -166,8 +181,9 @@ const AUTO_RE = /\b(my name is|call me|i live in|i(?:'m| am) based in|i prefer|m
 export function detectAutoMemory(text: string): string | null {
   const t = text.trim();
   if (!t || t.length > 300 || /\?\s*$/.test(t)) return null;
+  if (memoryPrivacy(t) !== "safe" || /["“”`]|\b(?:today|tonight|tomorrow|this week|temporarily|for now|don't|do not|no longer)\b/i.test(t)) return null;
   if (/\b(if|imagine|pretend|suppose|story|character|role-?play|write|example)\b/i.test(t)) return null;
-  const m = t.match(AUTO_RE);
+  const m = t.match(AUTO_RE) ?? t.match(/\b(i(?:'m| am) (?:working on|building)|my (?:long-term goal|project|tech stack) is)\s+([^.!?\n,;]{2,100})/i);
   if (!m) return null;
   const fact = `${m[1]} ${m[2].trim()}`.replace(/\s+/g, " ");
   return fact.charAt(0).toUpperCase() + fact.slice(1);
