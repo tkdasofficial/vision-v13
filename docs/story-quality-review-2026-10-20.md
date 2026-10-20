@@ -1,0 +1,39 @@
+# Story quality refinement — 2026-10-20
+
+## Root causes and existing flow
+
+Existing flow traced: chat request routing → owner-scoped jobs → Cloudflare Queue → original request slot → blueprint → prose story → sequential scenes → deterministic checks/regeneration/repairs → private staged artifact → existing hash/contract finalizer → permanent originating-chat reply → immediate verified workspace cleanup → shared Markdown renderer and job recovery. The Deep story branch already had a structured semantic review contract; the active Cloud slot branch did not use it.
+
+Confirmed quality gaps: unvalidated prose blueprints, no actual preceding-scene boundary in generation, repair prompts missing original request/story/format, format-only scores mislabeled as quality, count checks skipped without explicit fields, empty/reordered sections, multi-scene candidates, wrong numbering, and duplicate long content. Previous live Mira/Pip output also exhibited radar-operating cat/prop inconsistencies and leaked duplicated components (existing latency report).
+
+## Implemented changes
+
+- Structured new blueprint profiles: appearance/clothing/personality/motivation/abilities/limitations/relationships, shared visual conditions, ordered causal/emotional beats and before/after state. Validate complete required fields and ordered count; preserve previously saved legacy blueprints for resume. Planner output is not proof of semantic state correctness.
+- Generation and original bounded repairs retain original request, complete story, blueprint and actual accepted previous scene. Respect established fantasy, ordinary animal limitations and legitimate visual changes.
+- Reuse Deep's review schema, review prompt and unchecked-category failure logic for Cloud stories. One full-story semantic review per candidate; structured severity/category/scene/reference/evidence/correction, exact grounding and explicit unchecked failures. The existing provider chain/caps are unchanged; reviewer is a separate call through that chain, not a promised independent model.
+- Existing deterministic validator now checks default/alternate scene counts, ordering, empty/misordered fields, multiple scene headings, numbering and exact long duplicated components. Narrative duplicate paragraphs detected; intentionally repeated dialogue/prompts exempt when explicitly requested. Short recurring descriptions are not flagged.
+- Targeted semantic and duplicate edits change one named scene or one paragraph. Approved source slots are never overwritten; revised content is an overlay record. Full narrative/all dependent scenes re-reviewed after every successful edit. Structurally bad edits retain the original and still consume a bounded attempt.
+- At most two edits per section and six per job. Edit reservations persist before provider dispatch, not before a queue-budget yield. Candidate hashes include request/blueprint/story/scenes; stale reviews cannot approve changed content. Versioned review/findings/attempts/record references reuse optional original-prompt slot metadata, no migration.
+- Unavailable/malformed/ungrounded/failed reviews and exhausted repairs fail honestly with saved draft records and no falsely successful delivery. Slots release for other jobs; failure drafts remain generation_records under the existing retention model, not a new user-visible recovery UI.
+- Completion includes additive quality metadata. Existing authentication, queue budget/heartbeat, providers, finalizer, file opt-in, reply ids, permanent chat persistence and cleanup implementation are unchanged.
+
+## Actual verification
+
+- Unchanged full baseline: **118 files; 1,724 passed, one skipped**; suite wall time **61.45s**.
+- Initial changed focused run: 94 passed, one failed; an old mock misclassified repair context as a new draft after repairs began carrying the original request. Fixed mock dispatch without weakening its best-candidate assertion.
+- Intermediate full suite: **119 files; 1,740 passed, one skipped**; **64.41s**. Automatic checker caught a test constructor mistake; corrected by assigning the existing sessionId property.
+- Subsequent focused suites: **85 passed** (8 files), then **64 passed** (4 files), including structured blueprint/scene gates, existing Deep story regressions, workspace cleanup/isolation, queue status, artifact and job recovery.
+- Final full result is recorded in the final roadmap update. Additional tests verify interrupted-edit reservations, stale candidate reviews, exact duplication and retained drafts.
+- Mocked five-scene run: all five scenes remain ordered; ordinary Pip's radar action is targeted to scene 2, corrected to Mira's action; other scenes unchanged; full re-review approves delivery. Persistent failure stops after two scene edits, saves findings and does not upload. Missing/false coverage and malformed reports cannot pass. Tests preserve dialogue ranges and one-call queue continuation.
+
+These are injected-model/store regression tests, not live AI or authenticated UI acceptance. Capability/prop/dialogue tests exercise supplied review findings; they do not establish a real model's detection accuracy. Existing authentication/streaming/background/ownership/persistence/cleanup regressions ran in the full suite.
+
+## Quality/latency comparison and remaining acceptance
+
+The baseline executes the unchanged synthetic workflow, not a fresh signed-in generation. Historical same-request live timing is **381.59s observed** (378.488s between saved messages), from the prior report, not a new controlled baseline. No current-account browser session exists, preview APIs use the existing deployed Cloudflare version, and this request forbids automatic deployment. Therefore **no new live before/after quality rating or latency measurement is claimed**, nor is UI→Queue→D1 reload acceptance of this version complete.
+
+Controlled call counts for a clean five-scene run: prior baseline blueprint + story + five scenes = **7 generation calls**; new candidate = **8 logical calls**, with one added full review (14.3% call-count increase, not a latency estimate). One semantic scene edit = **10 calls** (review + edit + re-review); an unchanged scene is not regenerated. Two failing edits = **12 calls** then honest failure. Queue still permits one logical call per invocation. Provider fallback attempts may exceed logical call counts. Existing token caps/timeouts remain; malformed/truncated reviews and large blueprints can fail safely rather than be approved. Latency/cost acceptability and output-budget adequacy, especially for 25-scene plans, require live measurement before release.
+
+Limitations: same-chain semantic review is fallible; no mathematical proof of continuity, separate-model guarantee or complete ChatGPT-quality claim. Blueprint state is planned structure, not an evidence-linked committed per-scene state ledger. No provider selection changes, paid resources, credential changes, migrations, destructive data changes or deployment. No unrelated auth/persistence refactor or new pipeline.
+
+Next acceptance requires authorized Cloudflare activation plus a usable first-party account session, the unchanged Mira/Pip prompt, saved originating-chat result/reload and read-only cleanup verification, independent scene-level quality review and stage/call timing. No background verification runs after this turn.
