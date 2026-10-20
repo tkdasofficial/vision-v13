@@ -34,6 +34,12 @@ export async function saveReply(userId: string, chatId: string | undefined, repl
       [replyId, content, JSON.stringify({ ...meta, background: true }), chatId, userId],
     );
     await d1("UPDATE chat_sessions SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? AND user_id = ?", [chatId, userId]);
+    // Index the actual committed answer, not an attempted conflicting overwrite.
+    const rows = await d1<any>("SELECT m.content FROM chat_messages m JOIN chat_sessions s ON s.id = m.session_id WHERE m.id = ? AND s.id = ? AND s.user_id = ?",[replyId,chatId,userId]);
+    if (rows[0]?.content === content) {
+      const { recordIntelligenceArtifact } = await import("@/lib/ai/intelligence-store.server");
+      await recordIntelligenceArtifact(userId,chatId,replyId,content,{ request:typeof meta.request === "string" ? meta.request : "",messageId:replyId,parentId:typeof meta.sourceId === "string" ? meta.sourceId : undefined }).catch(() => console.error("[chat:artifact] indexing failed"));
+    }
   } catch (e) {
     console.error("[chat:background] save failed", (e as Error)?.message);
     throw new Error("The reply could not be saved. Please reopen the chat to check its task status.");

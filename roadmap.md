@@ -1,5 +1,12 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Complete intelligence system
+- [ ] Audit all ten capabilities and preserve existing architecture, identity checks, data and provider configuration.
+- [ ] Integrate owner-scoped artifact lineage, contextual retrieval and task continuity into actual chat/file execution.
+- [ ] Add generalized reference/ambiguity/planning verification tests and additive persistence where required.
+- [ ] Run relevant and full regression tests; document authenticated end-to-end blockers honestly. No automatic deployment.
+- [ ] Report all ten implementation statuses, database changes, test evidence and deployment readiness.
+
 ## Current request — Reliable persistent memory
 - [x] Extend deterministic natural-language commands/context clarification, credential filtering, contextual private-data consent and explicit priority.
 - [x] Add main-D1 metadata/unique keys/CAS/privacy revisions and history cutoff; preserve existing rows, chats and sandbox. Migration tested on real SQLite; not applied live.

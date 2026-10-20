@@ -11,9 +11,15 @@ export async function startJob(userId: string, id: string, type: JobType, input:
     const existing = await getJob(userId, id).catch(() => null);
     if (existing) return existing;
   }
+  const { ownedChat, prepareIntelligenceJob } = await import("@/lib/ai/intelligence-store.server");
+  if (sessionId && !await ownedChat(userId,sessionId)) throw new Error("Conversation not found.");
+  if (sessionId && typeof input.prompt === "string" && !input.resumeFrom) {
+    const prepared = await prepareIntelligenceJob(userId,sessionId,input.prompt);
+    input = { ...input,...prepared };
+  }
   const { prepareKeepAlive } = await import("./chat-background.server");
   const keepAlive = await prepareKeepAlive();
-  const stored = type === "runtime_task" ? { operation: input.operation, params: input.params, fileName: input.fileName, mime: input.mime, sourceArtifactId: input.sourceArtifactId ?? null } : type === "zip_analyze" ? { fileName: input.fileName, sourceArtifactId: input.sourceArtifactId ?? null } : type === "agent_task" ? { prompt: input.prompt, sources: input.sources ?? [], ...(input.resumeFrom ? { resumeFrom: input.resumeFrom } : {}) } : input;
+  const stored = type === "runtime_task" ? { operation: input.operation, params: input.params, fileName: input.fileName, mime: input.mime, sourceArtifactId: input.sourceArtifactId ?? null } : type === "zip_analyze" ? { fileName: input.fileName, sourceArtifactId: input.sourceArtifactId ?? null } : type === "agent_task" ? { prompt: input.prompt, sourceId:input.sourceId, sources: input.sources ?? [], ...(input.resumeFrom ? { resumeFrom: input.resumeFrom } : {}) } : input;
   const job = await createJob(id, userId, type, stored, attempt, sessionId);
   const { runCodeExport, runProjectGenerate, runZipAnalyze } = await import("./runners.server");
   const run = (async () => {
@@ -37,7 +43,7 @@ export async function startJob(userId: string, id: string, type: JobType, input:
         await job.step("uploading", `Storing ${files.length} file(s) privately for retries`);
         for (const f of files) { const ref = await job.saveArtifact(f.name, f.mime || "application/octet-stream", f.bytes, "source"); sources.push({ id: ref.id, name: f.name, mime: f.mime }); }
         const { d1 } = await import("@/lib/cloud/d1.server");
-        await d1("UPDATE jobs SET input = ? WHERE id = ?", [JSON.stringify({ prompt: input.prompt, sources }), id]);
+        await d1("UPDATE jobs SET input = ? WHERE id = ? AND user_id = ?", [JSON.stringify({ ...stored, prompt: input.prompt, sources }), id,userId]);
       } else if (sources.length) {
         await job.step("downloading", "Loading the attached files");
         for (const s of sources) files.push({ name: s.name, mime: s.mime, bytes: await loadSource(userId, s.id) });

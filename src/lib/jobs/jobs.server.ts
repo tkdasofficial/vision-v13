@@ -13,7 +13,9 @@ export async function createJob(id: string, userId: string, type: JobType, input
   const t = now();
   await d1("INSERT INTO jobs (id, user_id, type, status, detail, input, attempt, session_id, steps, created_at, updated_at) VALUES (?, ?, ?, 'queued', 'Accepted', ?, ?, ?, ?, ?, ?)",
     [id, userId, type, JSON.stringify(input ?? {}), attempt, sessionId, JSON.stringify([{ status: "queued", detail: "Accepted", at: t, endedAt: t, outcome: "ok" }]), t, t]);
-  return new JobRun(id, userId);
+  const job = new JobRun(id, userId);
+  job.sessionId = sessionId;
+  return job;
 }
 
 /** Records real progress for one running job. Every write also proves the worker is alive. */
@@ -108,6 +110,17 @@ export class JobRun {
     if (kind !== "source") {
       const { markDriveIndexed } = await import("@/lib/cloud/drive.server");
       await markDriveIndexed(identity);
+      if (this.sessionId) {
+        const { recordIntelligenceArtifact } = await import("@/lib/ai/intelligence-store.server");
+        const stored = (await d1<any>("SELECT input FROM jobs WHERE id = ? AND user_id = ?",[this.id,this.userId]))[0];
+        let input:any={}; try { input=JSON.parse(stored?.input ?? "{}"); } catch {}
+        let content="";
+        if (/\.(?:pdf|docx|xlsx|csv|json|txt|md|html?|xml|ya?ml|svg|py|js|ts|css)$/i.test(name)) {
+          const { textOf } = await import("@/lib/tools/registry.server");
+          content=await textOf({ name,mime,bytes });
+        }
+        await recordIntelligenceArtifact(this.userId,this.sessionId,id,content,{ request:input.prompt, parentId:input.sourceId,artifactId:id,title:name,operation:"tool_output" });
+      }
     }
     return { id, name, size: bytes.length, kind: kind === "source" ? "file" : kind };
   }
