@@ -156,7 +156,8 @@ export const Route = createFileRoute("/api/chat")({
         {
           const { resolveReference, sourceBlock, workingContext } = await import("@/lib/ai/references");
           const fullHist = (Array.isArray(body?.messages) ? body.messages.slice(0, -1) : []).map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter((p: any) => p.type === "text").map((p: any) => String(p.text ?? "")).join("\n") : "" }));
-          const owned = chatId ? await resolveOwnedContext(caller.user.id,chatId,lastText) : null;
+          const { isContentAction } = await import("@/lib/ai/references");
+          const owned = chatId && isContentAction(lastText) ? await resolveOwnedContext(caller.user.id,chatId,lastText) : null;
           const ref = owned?.ref ?? resolveReference(lastText, fullHist as any);
           sourceId = owned?.sourceId;
           retrieved = ref.kind === "found" ? `Using ${ref.label}` : null;

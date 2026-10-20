@@ -30,16 +30,16 @@ export async function intelligenceArtifacts(userId: string, chatId: string): Pro
   return rows.map((r) => ({ id:r.id, title:r.title,kind:r.kind,content:r.content,rootId:r.root_id,parentId:r.parent_id,version:r.version,chatId:r.chat_id,messageId:r.message_id,artifactId:r.artifact_id }));
 }
 export async function recordIntelligenceArtifact(userId: string, chatId: string, id: string, content: string, opts: { request?: string; parentId?: string; artifactId?: string; messageId?: string; title?: string; kind?: string; operation?: string } = {}) {
-  if (!await ownedChat(userId, chatId)) throw new Error("Conversation not found.");
   const desc = artifactDescriptor(content, opts.request ?? "");
-  if (!desc && !opts.artifactId) return;
+  if (!desc && !opts.artifactId && !opts.parentId) return;
+  if (!await ownedChat(userId, chatId)) throw new Error("Conversation not found.");
   await ensureIntelligence();
-  const parent = opts.parentId ? (await d1<any>("SELECT id, root_id FROM intelligence_artifacts WHERE user_id = ? AND chat_id = ? AND (id = ? OR message_id = ?) LIMIT 1", [userId,chatId,opts.parentId,opts.parentId]))[0] : undefined;
+  const parent = opts.parentId ? (await d1<any>("SELECT id, root_id, title, kind FROM intelligence_artifacts WHERE user_id = ? AND chat_id = ? AND (id = ? OR message_id = ?) LIMIT 1", [userId,chatId,opts.parentId,opts.parentId]))[0] : undefined;
   if (opts.parentId && !parent) throw new Error("Source version not found.");
   const root = parent && opts.operation !== "tool_output" ? parent.root_id : id;
   await d1(`INSERT INTO intelligence_artifacts (id,user_id,chat_id,message_id,artifact_id,title,kind,content,content_hash,root_id,parent_id,version,operation,created_at)
     SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,COALESCE((SELECT MAX(version) FROM intelligence_artifacts WHERE user_id = ?2 AND root_id = ?10),0)+1,?12,strftime('%Y-%m-%dT%H:%M:%fZ','now')
-    WHERE EXISTS(SELECT 1 FROM chat_sessions WHERE id = ?3 AND user_id = ?2) ON CONFLICT(user_id,id) DO NOTHING`, [id,userId,chatId,opts.messageId ?? null,opts.artifactId ?? null,opts.title ?? desc?.title ?? "Output",opts.kind ?? desc?.kind ?? "document",content,await hash(content),root,parent?.id ?? null,opts.operation ?? "generate"]);
+    WHERE EXISTS(SELECT 1 FROM chat_sessions WHERE id = ?3 AND user_id = ?2) ON CONFLICT(user_id,id) DO NOTHING`, [id,userId,chatId,opts.messageId ?? null,opts.artifactId ?? null,opts.title ?? (parent && !opts.artifactId ? parent.title : desc?.title) ?? "Output",opts.kind ?? (parent && !opts.artifactId ? parent.kind : desc?.kind) ?? "document",content,await hash(content),root,parent?.id ?? null,opts.operation ?? "generate"]);
 }
 
 /** Read actual owned messages; incoming source fences are never authority for stored artifacts. */
@@ -68,6 +68,7 @@ export async function prepareIntelligenceJob(userId: string, chatId: string | nu
   const { ref, sourceId } = await resolveOwnedContext(userId,chatId,request);
   if (ref.kind === "ambiguous") throw new Error(ref.question);
   if (ref.kind === "missing") throw new Error(ref.reason);
+  if (ref.kind === "found" && !ref.content.trim()) throw new Error("The selected output has no readable source text. Attach the original file for conversion.");
   if (ref.kind === "found" && ref.content.length > 60000) throw new Error("The original output is too large for a lossless export in this workflow.");
   return { prompt:request + (ref.kind === "found" ? `\n\n${sourceBlock(ref)}` : ""), sourceId };
 }
