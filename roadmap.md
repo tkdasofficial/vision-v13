@@ -1,11 +1,17 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Deploy backend and repeat live five-scene test
+- [x] Existing `bun run deploy` configuration verified; 90 focused tests passed. Deployed version `56fae2e0-4781-489f-9106-2bd3f997f73c`; health HTTP 200; existing databases/queue/providers unchanged.
+- [x] Same-account identical request submitted once in chat `a50de4cb-0e53-4693-8523-7d990d5910a2`, job `0a87a194-fadd-45c2-a80b-0d010e599a61`. Observed failure after 137.89s (runtime creation to failure 134.076s), not a successful generation time.
+- [x] Failure survives reload. Provider returned Markdown scenes instead of required JSON blueprint; validation rejected it. Two draft records remain; workspace `7927fb28-b688-4527-8a8b-fd0716204107` is failed, permanent user message retained, no assistant result delivered. Temporary sign-in scripts/session removed; no data deleted.
+- [ ] Successful five-scene quality/delivery/reload/cleanup and comparable generation timing remain blocked by the live blueprint-format failure; correcting generation/recovery and rerunning requires follow-up implementation.
+
 ## Current request — Story generation quality
 - [x] Trace existing request→queue→slots→validation→artifact→chat→cleanup flow; unchanged full baseline 1,724 passed/one skipped and eight-file workflow baseline 86 passed/one skipped (injected models, not live AI).
 - [x] Structured new character/visual/causal blueprints, shared Deep semantic review contract, evidence-linked scene/paragraph repair overlays and hashes in existing slot metadata; original accepted records/providers/schema/finalizer remain unchanged.
 - [x] Full final regression: 119 files, 1,745 passed/one skipped; automatic build OK. Five-scene targeted repair, persistent failure, interrupted-call attempt reservation, stale-review rejection, local duplicate paragraph repair, ordering and existing authentication/streaming/recovery/cleanup tests pass.
 - [x] Actual evidence/call counts and limitations documented in docs/story-quality-review-2026-10-20.md. Clean five-scene mock uses 8 logical calls versus 7 baseline; no live speed/quality claim or deployment.
-- [ ] Live same-account before/after quality/latency, originating-chat reload and cleanup acceptance — blocked by no current first-party account session and no deployment authorization; preview APIs execute the older deployed backend. Structured plans/model reviews remain fallible and no complete acceptance claim is made.
+- [ ] Live same-account before/after quality/latency and successful delivery/cleanup acceptance — deployment and signed-in test completed on October 20, but the provider returned scene Markdown instead of JSON blueprint and the new gate stopped generation; drafts retained. No successful timing or quality comparison is available.
 
 ## Current request — Truthful task statuses
 - [x] Generic running/processing, calculation, indexing and Deep work no longer show Executing; only explicit executing_code retains it. The manual terminal alias is checksum-only, not shell execution, so is not falsely labeled Executing.

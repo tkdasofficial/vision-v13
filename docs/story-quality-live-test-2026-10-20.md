@@ -1,0 +1,10 @@
+# Story quality live acceptance — October 20, 2026
+
+- Deployment: `56fae2e0-4781-489f-9106-2bd3f997f73c`, existing VISION Worker, through `bun run deploy`. Existing bindings and provider settings retained; no migrations or destructive operations. Health returned HTTP 200. Seven focused regression files: 90 tests passed.
+- Used normal first-party sign-in for the requested account; submitted the exact Mira/Pip five-scene request documented in the October 19 latency report, once.
+- Conversation: `a50de4cb-0e53-4693-8523-7d990d5910a2`; job: `0a87a194-fadd-45c2-a80b-0d010e599a61`.
+- Submission observation to terminal: **137.889 seconds**, sampled every five seconds. Runtime row creation `03:07:24.447Z` to failure `03:09:38.523Z`: **134.076 seconds**. These measure failure, not successful generation, and cannot be compared as a speed improvement against 6m22s or 14m36s.
+- Actual provider response to the blueprint call was 3,427 characters of Markdown scenes/visual prompts/dialogue, not the required structured JSON. The blueprint validator rejected it; no final assistant story was saved or delivered. The runner currently fails this malformed candidate immediately rather than running a bounded blueprint-format correction.
+- Read-only D1 checks: original request and rejected blueprint generation records retained; workspace `7927fb28-b688-4527-8a8b-fd0716204107` has workflow status `failed`; runtime status `failed`, stage `planning`; originating chat contains its 377-character user request and no assistant final result. Successful cleanup was not invoked, appropriately preserving the failed draft.
+- Browser reload displays `Failed after 135s`; no completed response is falsely shown. Screenshot verified. Temporary credential-bearing sign-in scripts and browser session file deleted.
+- Acceptance remains incomplete: successful five-scene generation, semantic review/repairs, final result reload and immediate successful cleanup were not reached. Next implementation should address malformed blueprint generation with bounded, checkpointed correction without weakening validation, then repeat this same live scenario.
