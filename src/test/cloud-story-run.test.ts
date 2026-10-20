@@ -313,7 +313,7 @@ describe("checkpointed semantic story quality", () => {
     await runCloudStoryJob(new JobRun("job-paragraph-repair", "user-1"), PROMPT, { call });
     expect(stories).toBe(1);
     expect(repairs).toBe(1);
-    expect(h.artifact).toContain(`${first.trim()}\n\n${replacement.trim()}\n\n${last.trim()}`);
+    expect(h.artifact).toContain(`${first}\n\n${replacement.trim()}\n\n${last.trim()}`);
     expect(h.artifact).toContain("## Scene 2");
   });
 });
