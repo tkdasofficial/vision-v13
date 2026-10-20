@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseQualityReview, replaceStoryParagraph, blueprintInstructions, readQualityCheckpoint, validateQualityBlueprint } from "@/lib/runtime/story-quality";
+import { parseQualityReview, replaceStoryParagraph, blueprintInstructions, readQualityCheckpoint, validateQualityBlueprint, duplicateStoryFindings } from "@/lib/runtime/story-quality";
 import { validateRuntimeStory } from "@/lib/runtime/story-validation";
 import { validateScene, checkStory } from "@/lib/runtime/cloud-story";
 
@@ -59,5 +59,6 @@ describe("deterministic story quality gates", () => {
     expect(validateRuntimeStory(document, "Create 2 scenes")).toContain("Scene 2 duplicates visual prompt from scene 1.");
     expect(validateRuntimeStory(document, "Create 2 scenes with identical prompts")).toEqual([]);
     expect(checkStory(`${repeated}\n\n${repeated}\n\n${"Other prose. ".repeat(130)}`)).toContain("The story contains duplicate narrative paragraphs.");
+    expect(duplicateStoryFindings("", [scene(1, repeated), scene(2, repeated)], "Create 2 scenes")[0]).toMatchObject({ sceneId: "scene:2", severity: "critical", reference: "scene:1" });
   });
 });

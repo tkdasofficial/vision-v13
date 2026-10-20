@@ -269,6 +269,34 @@ describe("checkpointed semantic story quality", () => {
     expect(base.calls).toEqual(["blueprint", "story", "scene1#1", "scene2#1", "scene3#1", "scene4#1", "scene5#1", "review"]);
     expect(h.artifact).toContain("## Scene 5");
   });
+  it("charges interrupted repairs durably without charging pre-call queue yields", async () => {
+    const fake = fakeDb(); h.db = fake.db;
+    const s = qualityScript();
+    const job = new JobRun("job-quality-interrupted", "user-1");
+    const call = async (messages: any[]) => {
+      if (String(messages[0].content).startsWith("Fix Prompt: repair only scene 2")) throw new Error("interrupted transport");
+      return s.call(messages);
+    };
+    for (let n = 0; n < 8; n++) expect(await runCloudStoryJob(job, request, { call, maxCalls: 1 })).toBe("yield");
+    expect(JSON.parse(fake.slots.get(1).result).repairs).toEqual({});
+    await expect(runCloudStoryJob(job, request, { call, maxCalls: 1 })).rejects.toThrow("interrupted transport");
+    expect(JSON.parse(fake.slots.get(1).result).repairs).toEqual({ "scene:2": 1 });
+    await expect(runCloudStoryJob(job, request, { call, maxCalls: 1 })).rejects.toThrow("interrupted transport");
+    expect(JSON.parse(fake.slots.get(1).result).repairs).toEqual({ "scene:2": 2 });
+    await runCloudStoryJob(job, request, { call, maxCalls: 1 });
+    expect(h.artifact).toBe("");
+    expect([...fake.records.values()].some((r) => r.content.includes(evidence))).toBe(true);
+  });
+  it("never reuses a passed audit after accepted scene content changes", async () => {
+    const fake = fakeDb(); h.db = fake.db;
+    const s = scripted(new Set());
+    const job = new JobRun("job-quality-stale", "user-1");
+    await runCloudStoryJob(job, PROMPT, { call: s.call });
+    const saved = fake.slots.get(4);
+    fake.records.get(saved.result_ref).content += "\nChanged scene evidence.";
+    await runCloudStoryJob(job, PROMPT, { call: s.call });
+    expect(s.calls.filter((c) => c === "review")).toHaveLength(2);
+  });
 });
 
 describe("scene repair keeps the best version", () => {
