@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { detectMemoryCommand, detectAutoMemory, relevantMemories, planMemoryWrite } from "@/lib/ai/memory";

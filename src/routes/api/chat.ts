@@ -29,7 +29,7 @@ export const Route = createFileRoute("/api/chat")({
         const { prepareKeepAlive, saveReply } = await import("@/lib/jobs/chat-background.server");
         const keepAlive = await prepareKeepAlive();
         const body: any = await request.json().catch(() => null);
-        const chatId = typeof body?.conversationId === "string" ? body.conversationId.slice(0, 64) : undefined;
+        const chatId = body?.incognito === true ? undefined : typeof body?.conversationId === "string" ? body.conversationId.slice(0, 64) : undefined;
         const { loadConversationHistory } = await import("@/lib/ai/memory.server");
         const { restoreConversationHistory } = await import("@/lib/ai/conversation-history");
         const incoming = Array.isArray(body?.messages) ? body.messages.slice(-200) : [];

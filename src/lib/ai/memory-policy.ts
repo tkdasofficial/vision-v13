@@ -29,11 +29,3 @@ export function userMemoryTarget(history: MemoryTurn[]): ContextTarget {
   if (!last || last.content.length > 500 || /[?]|```|\b(?:write|create|imagine|pretend|remember|forget|memory)\b/i.test(last.content)) return { kind: "clarify" };
   return { kind: "found", content: last.content.trim() };
 }
-
-export function correctionTarget(text: string, existing: PermanentMemory[]): string | null {
-  const m = text.match(/^(?:actually[, ]+|that has changed[, :—-]+|correction[: ,]+)(.+)$/i);
-  if (!m) return null;
-  const c = m[1].trim();
-  // A correction needs its own fact/subject; "that has changed" alone never chooses a row.
-  return /\b(?:my .+ is|i (?:live in|prefer|work at|work as)|call me)\b/i.test(c) && existing.length ? c : null;
-}
