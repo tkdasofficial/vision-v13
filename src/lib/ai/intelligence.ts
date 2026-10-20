@@ -28,9 +28,9 @@ export function conversationArtifacts(history: ConvMsg[]): ArtifactRecord[] {
     if (m.role === "user") { request = text; return; }
     const desc = artifactDescriptor(text, request);
     if (!desc) return;
-    const prior = out.at(-1);
     const revision = /\b(revise|rewrite|edit|improve|previous version|update|polish)\b/i.test(request);
-    const parent = revision && prior?.kind === desc.kind ? prior : undefined;
+    const selected = revision ? selectArtifact(request,out) : { kind:"none" as const };
+    const parent = selected.kind === "found" ? out.find((r) => r.id === selected.id || r.messageId === selected.id) : undefined;
     const id = m.id ?? `turn-${index}`;
     out.push({ ...desc, id, messageId: m.id, content: text, rootId: parent?.rootId ?? id, parentId: parent?.id, version: parent ? parent.version + 1 : 1 });
   });
@@ -55,7 +55,7 @@ export function selectArtifact(request: string, records: ArtifactRecord[]): Reso
   if (roots.length > 1 && !ordinal && !explicitLatest) return { kind: "ambiguous", label: kind ?? "artifact", question: `Which ${kind ?? "output"} do you mean: ${pool.filter((r, i, all) => all.findIndex((x) => x.rootId === r.rootId) === i).slice(0, 4).map((r) => `“${r.title}”`).join(" or ")}?` };
   const root = ordinal ? roots[({ first: 0, second: 1, third: 2 } as Record<string, number>)[ordinal]] : pool.at(-1)?.rootId;
   if (!root) return { kind: "missing", label: "artifact", reason: "That output is not available in this conversation." };
-  const family = records.filter((r) => r.rootId === root).sort((a, b) => a.version - b.version);
+  const family = records.filter((r) => r.rootId === root && (!kind || kind === "document" || kind === "draft" || r.kind === kind)).sort((a, b) => a.version - b.version);
   const requestedVersion = /\bversion\s*(?:#|number)?\s*(\d+)\b/i.exec(request)?.[1];
   const original = /\b(original|first version)\b/i.test(request);
   const previous = /\bprevious version\b/i.test(request);

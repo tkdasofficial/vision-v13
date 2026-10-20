@@ -1,7 +1,12 @@
 // Main D1 only. Immutable source snapshots and lineage; no extra provider or storage service.
-import { d1 } from "@/lib/cloud/d1.server";
+import { d1 as rawD1 } from "@/lib/cloud/d1.server";
 import { artifactDescriptor, conversationArtifacts, selectArtifact, selectTask, taskCommand, type ArtifactRecord } from "./intelligence";
 import { resolveReference, sourceBlock, extractSource, isContentAction, type ConvMsg } from "./references";
+async function d1<T = Record<string,any>>(sql:string,params:unknown[]=[]):Promise<T[]> {
+  let timer:ReturnType<typeof setTimeout> | undefined;
+  try { return await Promise.race([rawD1<T>(sql,params),new Promise<never>((_,reject) => { timer=setTimeout(() => reject(new Error("Context storage is unavailable. Please retry.")),5000); })]); }
+  finally { clearTimeout(timer); }
+}
 
 export const INTELLIGENCE_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS intelligence_artifacts (id TEXT NOT NULL, user_id TEXT NOT NULL, chat_id TEXT NOT NULL, message_id TEXT, artifact_id TEXT, title TEXT NOT NULL, kind TEXT NOT NULL, content TEXT NOT NULL, content_hash TEXT NOT NULL, root_id TEXT NOT NULL, parent_id TEXT, version INTEGER NOT NULL, operation TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(user_id,id))",
@@ -19,7 +24,9 @@ export async function ownedChat(userId: string, chatId?: string | null) {
 export async function intelligenceArtifacts(userId: string, chatId: string): Promise<ArtifactRecord[]> {
   if (!await ownedChat(userId, chatId)) return [];
   await ensureIntelligence();
-  const rows = await d1<any>("SELECT * FROM intelligence_artifacts WHERE user_id = ? AND chat_id = ? ORDER BY created_at ASC, version ASC LIMIT 500", [userId,chatId]);
+  const rows = await d1<any>(`SELECT a.* FROM intelligence_artifacts a WHERE a.user_id = ? AND a.chat_id = ?
+    AND (a.message_id IS NULL OR EXISTS(SELECT 1 FROM chat_messages m WHERE m.id=a.message_id AND m.session_id=a.chat_id AND COALESCE(json_extract(CASE WHEN json_valid(m.metadata) THEN m.metadata ELSE '{}' END,'$.deleted'),0)=0))
+    ORDER BY a.created_at ASC, a.version ASC LIMIT 500`, [userId,chatId]);
   return rows.map((r) => ({ id:r.id, title:r.title,kind:r.kind,content:r.content,rootId:r.root_id,parentId:r.parent_id,version:r.version,chatId:r.chat_id,messageId:r.message_id,artifactId:r.artifact_id }));
 }
 export async function recordIntelligenceArtifact(userId: string, chatId: string, id: string, content: string, opts: { request?: string; parentId?: string; artifactId?: string; messageId?: string; title?: string; kind?: string; operation?: string } = {}) {
@@ -29,7 +36,7 @@ export async function recordIntelligenceArtifact(userId: string, chatId: string,
   await ensureIntelligence();
   const parent = opts.parentId ? (await d1<any>("SELECT id, root_id FROM intelligence_artifacts WHERE user_id = ? AND chat_id = ? AND (id = ? OR message_id = ?) LIMIT 1", [userId,chatId,opts.parentId,opts.parentId]))[0] : undefined;
   if (opts.parentId && !parent) throw new Error("Source version not found.");
-  const root = parent?.root_id ?? id;
+  const root = parent && opts.operation !== "tool_output" ? parent.root_id : id;
   await d1(`INSERT INTO intelligence_artifacts (id,user_id,chat_id,message_id,artifact_id,title,kind,content,content_hash,root_id,parent_id,version,operation,created_at)
     SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,COALESCE((SELECT MAX(version) FROM intelligence_artifacts WHERE user_id = ?2 AND root_id = ?10),0)+1,?12,strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE EXISTS(SELECT 1 FROM chat_sessions WHERE id = ?3 AND user_id = ?2) ON CONFLICT(user_id,id) DO NOTHING`, [id,userId,chatId,opts.messageId ?? null,opts.artifactId ?? null,opts.title ?? desc?.title ?? "Output",opts.kind ?? desc?.kind ?? "document",content,await hash(content),root,parent?.id ?? null,opts.operation ?? "generate"]);
@@ -38,14 +45,14 @@ export async function recordIntelligenceArtifact(userId: string, chatId: string,
 /** Read actual owned messages; incoming source fences are never authority for stored artifacts. */
 export async function resolveOwnedContext(userId: string, chatId: string, text: string) {
   if (!await ownedChat(userId,chatId)) throw new Error("Conversation not found.");
-  const rows = await d1<any>("SELECT m.id,m.role,m.content FROM chat_messages m JOIN chat_sessions s ON s.id = m.session_id WHERE s.id = ? AND s.user_id = ? AND m.role IN ('user','assistant') ORDER BY m.created_at ASC LIMIT 1000",[chatId,userId]);
+  const rows = await d1<any>(`SELECT m.id,m.role,m.content FROM chat_messages m JOIN chat_sessions s ON s.id = m.session_id WHERE s.id = ? AND s.user_id = ? AND m.role IN ('user','assistant') AND COALESCE(json_extract(CASE WHEN json_valid(m.metadata) THEN m.metadata ELSE '{}' END,'$.deleted'),0)=0 ORDER BY m.created_at ASC LIMIT 1000`,[chatId,userId]);
   const history: ConvMsg[] = rows.map((r) => ({ id:r.id,role:r.role,content:r.content }));
   // Exclude a persisted current request, but never remove the preceding answer.
   if (history.at(-1)?.role === "user" && history.at(-1)?.content === text) history.pop();
   const stored = await intelligenceArtifacts(userId,chatId);
   const inferred = conversationArtifacts(history).filter((r) => !stored.some((x) => x.messageId === r.messageId || x.content === r.content));
   const pool = [...stored,...inferred];
-  const selected = isContentAction(text) ? selectArtifact(text,pool) : { kind:"none" as const };
+  const selected = isContentAction(text) && !taskCommand(text) ? selectArtifact(text,pool) : { kind:"none" as const };
   const ref = selected.kind === "none" ? resolveReference(text,history) : selected;
   const source = ref.kind === "found" ? pool.find((r) => r.messageId === ref.id || r.id === ref.id || r.content === ref.content) : undefined;
   if (source && !stored.some((r) => r.id === source.id)) {
@@ -75,11 +82,11 @@ export async function handleTaskContinuity(userId: string, chatId: string | unde
   const picked = selectTask(text,jobs.map((j) => { const row=rows.find((r) => r.id===j.id); let input:any={}; try { input=JSON.parse(row?.input ?? "{}"); } catch {} return { id:j.id,status:j.status,prompt:input.prompt ?? input.params?.prompt ?? j.detail,resumedBy:row?.resumed_by }; }),action);
   if (picked === "ambiguous") return "Which task do you mean? Please name its subject.";
   if (!picked) return action === "pause" ? "There is no active background task to pause in this chat." : "There is no interrupted background task to resume in this chat.";
-  if (action === "pause") return await requestCancel(userId,picked.id) ? "Pause requested. The task stops at its next checkpoint; completed steps remain saved." : "The task has already ended.";
+  if (action === "pause") return await requestCancel(userId,picked.id) ? "Stop requested. Completed checkpoints remain saved; any running step may finish first." : "The task has already ended.";
   const prev = await getJobInput(userId,picked.id);
   if (!prev || prev.attempt >= 5) return "This task cannot be retried again.";
   const { startJob } = await import("@/lib/jobs/dispatch.server");
   const result = await startJob(userId,crypto.randomUUID(),prev.type,prev.type === "agent_task" ? { ...prev.input,resumeFrom:picked.id } : prev.input,prev.attempt+1,chatId);
   if (!result) throw new Error("The task could not be resumed.");
-  return prev.type === "agent_task" ? "Task resumed from its verified checkpoint. Its progress appears in this chat." : "Task restarted using its saved inputs. Its progress appears in this chat.";
+  return result.status === "failed" || result.status === "timed_out" ? "The retry failed. Its recorded details appear in this chat." : prev.type === "agent_task" ? "Retry started using saved inputs and any reusable checkpoints. Its progress appears in this chat." : "Task restarted using its saved inputs. Its progress appears in this chat.";
 }
