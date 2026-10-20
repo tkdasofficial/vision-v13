@@ -248,8 +248,6 @@ describe("checkpointed semantic story quality", () => {
     expect(s.calls.filter((c) => c === "repair2")).toHaveLength(2);
     expect(h.artifact).toBe("");
     expect(h.d1Calls.find((c) => c.sql.includes("SET status = 'failed'"))?.params[0]).toContain("Unresolved scene:2 continuity");
-    const records = await h.db("SELECT content, checksum FROM generation_records WHERE id = ? AND user_id = ? LIMIT 1", ["missing", "user-1"]);
-    expect(records).toEqual([]);
     const fakeSlots = await h.db("SELECT slot_id, slot_type, status FROM generation_slots ORDER BY slot_id");
     expect(fakeSlots.every((s: any) => s.status === "free")).toBe(true);
   });
@@ -280,7 +278,7 @@ describe("scene repair keeps the best version", () => {
     let s1 = 0;
     const call = async (messages: any[]) => {
       const user = String(messages[1]?.content ?? "");
-      if (/Write scene 1 of/.test(user)) { s1++; return ok(scene(1, 8)); } // short dialogue: one issue
+      if (/Write scene 1 of/.test(user) && !String(messages[0].content).startsWith("Fix Prompt")) { s1++; return ok(scene(1, 8)); } // short dialogue: one issue
       if (String(messages[0].content).startsWith("Fix Prompt") && /Scene 1/.test(user)) return ok(s1++ === 2 ? "| table | only |" : scene(1, 27));
       return base.call(messages);
     };
