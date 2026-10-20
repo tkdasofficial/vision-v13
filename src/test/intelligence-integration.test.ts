@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { beforeEach,afterEach,describe,it,expect,vi } from "vitest";
 import { resolveReference,artifactMatchesSource,extractSource } from "@/lib/ai/references";
-import { conversationArtifacts,selectTask,taskCommand } from "@/lib/ai/intelligence";
+import { conversationArtifacts,selectTask,taskCommand,relevantConversation } from "@/lib/ai/intelligence";
 const state=vi.hoisted(() => ({ db:null as DatabaseSync|null }));
 vi.mock("@/lib/cloud/d1.server",() => ({ d1:async (sql:string,p:unknown[]=[]) => {
   if (!state.db) throw new Error("Database missing");
@@ -23,6 +23,12 @@ const message=(id:string,role:string,content:string,n:number,chat="c1") => state
 const history=()=>[{id:"u",role:"user" as const,content:"Generate a coral reef report"},{id:"a",role:"assistant" as const,content:report},...Array.from({length:20},(_,i)=>({id:`x${i}`,role:(i%2 ? "assistant":"user") as "user"|"assistant",content:i%2 ? "The capital is Lima.":"What is Peru's capital?"}))];
 
 describe("integrated artifact continuity",() => {
+  it("retrieves relevant earlier subject and answer without the entire conversation",()=>{
+    const recalled=relevantConversation("What were the coral survey results?",history());
+    expect(recalled.some(m=>m.id === "a")).toBe(true);
+    expect(recalled.some(m=>String(m.content).includes("capital"))).toBe(false);
+    expect(recalled.length).toBeLessThan(history().length);
+  });
   it("finds original report after unrelated questions and creates a PDF carrying that report",async () => {
     history().forEach((m,i)=>message(m.id,m.role,m.content,i));
     const prepared=await store.prepareIntelligenceJob("u1","c1","Make a PDF of that report");
