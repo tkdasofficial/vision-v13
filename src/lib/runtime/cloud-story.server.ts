@@ -9,6 +9,7 @@
 // validate it and deliver it to the chat.
 import { d1 } from "@/lib/cloud/d1.server";
 import { JobRun, safeError } from "@/lib/jobs/jobs.server";
+import { runtimeStageStep } from "./progress";
 import { orchestrateText, type Completion } from "../ai/orchestrator.server";
 import { TEXT_CHAIN } from "../ai/models.server";
 import * as slots from "../sandbox/slots.server";
@@ -37,8 +38,11 @@ export class StoryYield extends Error { constructor() { super("yield"); } }
 /** Thrown when another story job holds the shared slots 1-3; this job waits its turn in the queue. */
 export class StoryWait extends StoryYield {}
 
-async function setStage(jobId: string, stage: string) {
-  await d1("UPDATE runtime_jobs SET stage = ?, updated_at = ? WHERE job_id = ?", [stage, now(), jobId]);
+async function setStage(job: JobRun, stage: string) {
+  const mapped = runtimeStageStep(stage);
+  const last = job.steps.at(-1);
+  if (mapped && (last?.status !== mapped[0] || last.detail !== mapped[1])) await job.step(...mapped);
+  await d1("UPDATE runtime_jobs SET stage = ?, updated_at = ? WHERE job_id = ?", [stage, now(), job.id]);
 }
 
 async function cancelRequested(jobId: string): Promise<boolean> {
@@ -122,7 +126,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
   const contract = sceneContract(prompt);
 
   await slots.ensureSlots();
-  await setStage(jobId, "planning");
+  await job.step("inspecting", "Reading saved story progress");
   // Per-job workspace record (vision-sandbox, migration 0005): mirrors what actually happens below.
   const jobRow = (await d1<{ created_at: string }>("SELECT created_at FROM jobs WHERE id = ? AND user_id = ?", [jobId, userId]))[0];
   const w = await openStoryWorkspace({
@@ -148,6 +152,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     blueprintRef = bp.ref; blueprint = bp.content;
   } else {
     if (!(await slots.claimFixedSlot(userId, jobId, 3))) throw new StoryWait();
+    await setStage(job, "planning");
     const r = await generateIntoSlot(userId, jobId, 3, "blueprint", [
       { role: "system", content: "Create a master blueprint for the requested story: setting, characters (names, appearance, clothing), rules and constraints. Concise and structured; no prose story." },
       { role: "user", content: prompt },
@@ -167,10 +172,13 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
   } else {
     if (!(await slots.claimFixedSlot(userId, jobId, 2))) throw new StoryWait();
     // Prose only: scene-formatted text here would duplicate the scene prompts in the delivery.
-    const ask = (fix: string[]) => generateIntoSlot(userId, jobId, 2, "story", [
+    const ask = async (fix: string[]) => {
+      await setStage(job, fix.length ? "retrying_story" : "writing_story");
+      return generateIntoSlot(userId, jobId, 2, "story", [
       { role: "system", content: storyInstructions(count) + (fix.length ? ` The previous attempt had these problems: ${fix.join(" ")} Fix every one of them.` : "") },
       { role: "user", content: `Blueprint:\n${blueprint}\n\nRequest:\n${prompt}` },
-    ], STORY_LIMITS.maxStoryTokens, call);
+      ], STORY_LIMITS.maxStoryTokens, call);
+    };
     // Resumable: a saved first attempt (and its findings) is reused instead of regenerated.
     const stSlot = (await slots.listSlots(userId, jobId)).find((x) => x.slot_id === 2);
     const prog = parseProgress(stSlot?.status === "generating" ? stSlot.findings : null);
@@ -185,12 +193,14 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     }
     if (!r.ok) return fail(userId, jobId, `Story generation failed: ${r.error}`);
     await slots.saveSlotProgress(userId, jobId, 2, JSON.stringify({ ref: r.recordId, round }));
+    await setStage(job, "validating_story");
     const storyIssues = checkStory(r.content!);
     if (storyIssues.length) {
       if (round >= 1) return fail(userId, jobId, `The story did not meet its format after one regeneration: ${storyIssues.join(" ")}`);
       r = await ask(storyIssues);
       if (!r.ok) return fail(userId, jobId, `Story generation failed: ${r.error}`);
       await slots.saveSlotProgress(userId, jobId, 2, JSON.stringify({ ref: r.recordId, round: 1 }));
+      await setStage(job, "validating_story");
       const still = checkStory(r.content!);
       if (still.length) return fail(userId, jobId, `The story did not meet its format after one regeneration: ${still.join(" ")}`);
     }
@@ -217,7 +227,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       continue;
     }
 
-    await setStage(jobId, `writing_scene_${i + 1}`);
+    await setStage(job, `writing_scene_${i + 1}`);
 
     // Generate, then score. Below 90: regenerate once, then bounded Fix Prompt rounds.
     // Every candidate is checkpointed on the slot, so each step can run in its own queue run.
@@ -242,16 +252,19 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       await slots.saveSlotProgress(userId, jobId, slotId, JSON.stringify({ ref: gen.recordId, round: 0 }));
       fresh = true;
     }
+    await setStage(job, `validating_scene_${i + 1}`);
     let { score, issues } = scoreScene(content, i, prompt);
     if (fresh) await w.validated(i, content, issues, "generation");
     if (score < SLOT_LIMITS.passScore && round === 0) {
       // One full regeneration with the pointed findings.
+      await setStage(job, `retrying_scene_${i + 1}`);
       const t0 = Date.now();
       const gen = await generateIntoSlot(userId, jobId, slotId, "prompt", sceneMsgs(` The previous attempt failed these checks: ${issues.join(" ")} Fix every one of them.`), STORY_LIMITS.maxSceneTokens, call);
       await w.attempt(4 + i, "retry", t0, gen.ok, gen.ok ? undefined : String(gen.error ?? "failed"));
       if (!gen.ok) { failedScenes++; await w.slotDone(i, false); continue; }
       round = 1;
       const candidate = normalizeScene(gen.content!, i);
+      await setStage(job, `validating_scene_${i + 1}`);
       const rescored = scoreScene(candidate, i, prompt);
       await w.validated(i, candidate, rescored.issues, "retry");
       // Keep whichever version scores higher; a worse rewrite never replaces a better draft.
@@ -261,6 +274,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     }
 
     while (score < SLOT_LIMITS.passScore && round - 1 < SLOT_LIMITS.maxFixAttempts) {
+      await setStage(job, `correcting_scene_${i + 1}`);
       const t0 = Date.now();
       const fix = await call([
         { role: "system", content: "Fix Prompt: repair the scene so it satisfies every pointed finding. Return only the corrected scene, keeping the required headings and staying consistent with the blueprint." },
@@ -270,6 +284,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       if (!fix.ok || !fix.text.trim()) break;
       round++;
       const candidate = normalizeScene(fix.text, i);
+      await setStage(job, `validating_scene_${i + 1}`);
       const rescored = scoreScene(candidate, i, prompt);
       await w.validated(i, candidate, rescored.issues, "repair");
       if (rescored.score >= score) { content = candidate; ({ score, issues } = rescored); }
@@ -293,8 +308,9 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
   if (failedScenes === count) return fail(userId, jobId, "Every scene failed generation or repair.");
 
   // Assemble in order and run the whole-document contract check before delivery.
-  await setStage(jobId, "assembling");
+  await setStage(job, "assembling");
   const doc = assembleStoryDocument({ story, scenes, prompt });
+  await setStage(job, "validating_output");
   const issues = validateAssembled(doc, prompt);
   await w.finalValidation(issues);
   if (issues.length) {
@@ -303,6 +319,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
 
   // Hand off to the existing finalizer: store privately, mark uploaded.
   const bytes = new TextEncoder().encode(doc);
+  await job.step("saving", "Storing the verified story for delivery");
   const { putD1Artifact } = await import("@/lib/jobs/artifact-store.server");
   const stored = await putD1Artifact(bytes);
   const hash = await sha256Hex(bytes);

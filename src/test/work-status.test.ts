@@ -4,6 +4,16 @@ import { STAGE_LABELS, type TaskStage } from "@/lib/ai/task-events";
 import { JOB_STATUSES, isTerminal, type JobStatus } from "@/lib/builder/statuses";
 
 describe("chat worker statuses", () => {
+  it("reserves execution for explicit code execution, not ordinary chat or file work", () => {
+    expect(workStateForStage("executing_code")).toBe("EXECUTING");
+    expect(workStateForStage("processing")).toBe("WORKING");
+    expect(workStateForStage("calculating")).toBe("ANALYZING");
+    expect(workStateForJob("running")).toBe("WORKING");
+    expect(workStateForJob("processing")).toBe("WORKING");
+    expect(workStateForJob("indexing")).toBe("ORGANIZING");
+    for (const status of Object.keys(JOB_STATUSES) as JobStatus[]) expect(workStateForJob(status)).not.toBe("EXECUTING");
+    expect(deepActivitySummary(["working"], 1)?.steps).toEqual(["Working"]);
+  });
   it("uses exactly the approved status registry", () => {
     expect([...WORK_STATES]).toEqual([
       "THINKING", "REMEMBERING", "SAVING_MEMORY", "UPDATING_MEMORY", "DELETING_MEMORY",

@@ -41,6 +41,22 @@ function scripted(badFirst: Set<number>) {
 beforeEach(() => { h.db = fakeDb().db; h.artifact = ""; h.d1Calls = []; resetSlotSetup(); });
 
 describe("runCloudStoryJob", () => {
+  it("records the matching operation before real model work and output storage", async () => {
+    const base = scripted(new Set([1]));
+    const job = new JobRun("job-status-1", "user-1");
+    const observed: string[] = [];
+    const call = async (messages: any[]) => {
+      observed.push(job.steps.at(-1)?.status ?? "missing");
+      return base.call(messages);
+    };
+    await runCloudStoryJob(job, PROMPT, { call });
+    expect(observed).toEqual(["planning", "writing_content", "writing_content", "retrying", "writing_content"]);
+    expect(job.steps.some((s) => s.status === "validating_output")).toBe(true);
+    expect(job.steps.at(-1)?.status).toBe("saving");
+    const writes = h.d1Calls.filter((c) => c.sql.startsWith("UPDATE jobs SET status = ?"));
+    expect(writes.map((c) => c.params[0])).toEqual(job.steps.map((s) => s.status));
+    expect(h.artifact).toContain("## Scene 2");
+  });
   it("regenerates a below-90 scene in its own slot instead of failing it", async () => {
     const { call, calls } = scripted(new Set([1]));
     const out = await runCloudStoryJob(new JobRun("job-regen-1", "user-1"), PROMPT, { call });
