@@ -3,6 +3,7 @@
 import { requestedStoryFields, storyDialogueRange, spokenStoryWords, requiresFixedStoryBackground, wantsStoryProse } from "../ai/story-output";
 import { validateRuntimeStory } from "./story-validation";
 import { SLOT_LIMITS } from "../sandbox/slots";
+import { storySceneCount } from "./story-count";
 
 export const STORY_LIMITS = {
   defaultScenes: 5,
@@ -14,10 +15,7 @@ export const STORY_LIMITS = {
 
 /** Extracts the requested scene/prompt count; defaults to 5, capped at 25. */
 export function parseSceneCount(prompt: string): number {
-  const m = /(\d{1,2})\s*[- ]?(?:scenes?|prompts?|chapters?|episodes?|parts?)\b/i.exec(prompt);
-  const n = m ? Number(m[1]) : STORY_LIMITS.defaultScenes;
-  if (!Number.isInteger(n) || n < 1) return STORY_LIMITS.defaultScenes;
-  return Math.min(n, STORY_LIMITS.maxScenes);
+  return storySceneCount(prompt);
 }
 
 const FIELD_HEADINGS: Record<string, string> = {
@@ -44,16 +42,16 @@ export function sceneContract(prompt: string): string {
   if (requiresFixedStoryBackground(prompt)) {
     lines.push("Keep the same single background/setting in every scene; never move the characters to a new location.");
   }
-  lines.push("Keep every character's name, appearance and clothing exactly as established in the blueprint and story.");
+  lines.push("Keep names, appearance, personality, capabilities and limitations consistent with the blueprint. Clothing, props, injury, lighting and weather may change only through an explained story event. Repeat relevant visible identity details, not every object. Follow the assigned beat and previous accepted scene; show causal transitions, plausible consequences and an emotional turn. Dialogue must belong to a present speaker, reflect their knowledge and advance this beat rather than repeat earlier lines. Normal animals cannot perform human technical tasks unless those abilities are explicitly established.");
   return lines.join(" ");
 }
 
 /** Deterministic per-scene validation against the request contract. Returns issue strings.
  *  The total scene count is a whole-document property, checked by validateAssembled. */
 export function validateScene(sceneText: string, sceneIndex: number, prompt: string): string[] {
-  const wrapped = sceneText.replace(/^##\s*Scene\s+\d+/i, `## Scene ${sceneIndex + 1}`);
-  return validateRuntimeStory(wrapped, prompt)
-    .filter((issue) => !issue.startsWith("Expected exactly"))
+  const heading = /^##\s*Scene\s+(\d+)/i.exec(sceneText.trim());
+  const numbering = heading && Number(heading[1]) !== sceneIndex + 1 ? [`Scene ${sceneIndex + 1} has the wrong scene number.`] : [];
+  return [...numbering, ...validateRuntimeStory(sceneText, prompt, { sceneOnly: true })]
     .map((issue) => issue.replace(/^Scene \d+/, `Scene ${sceneIndex + 1}`));
 }
 
@@ -75,6 +73,7 @@ export function scoreScene(sceneText: string, sceneIndex: number, prompt: string
 export function storyInstructions(count: number): string {
   return `Write the complete story as continuous prose narrative covering all ${count} story beats in order, at least 250 words. ` +
     "Keep characters, clothing, setting and rules exactly as in the blueprint. " +
+    "Follow every planned beat in order with clear causes and consequences, character motivation, escalating tension and earned resolution. Track location, object attachments, injuries, knowledge, relationships and unresolved threads. Explain transitions and recovery; do not give ordinary animals unstated human abilities. Divide the prose into meaningful paragraphs so isolated contradictions can be repaired without rewriting approved content. Avoid redundant sentences and repeated paragraphs; intentional motifs are allowed. " +
     "Do not use headings, scene labels or numbers, visual prompts, or dialogue blocks; the scene prompts are written separately.";
 }
 
@@ -87,6 +86,8 @@ export function checkStory(text: string): string[] {
   if (/^\s*(?:#{1,6}\s*)?[*_]*(?:visual prompt|dialogue)[*_]*\s*(?::|$)/im.test(text)) issues.push("The story must not contain Visual Prompt or Dialogue sections.");
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   if (words < 250) issues.push(`The story is too short (${words} words); write at least 250 words.`);
+  const paragraphs = text.split(/\n\s*\n/).map((p) => p.toLowerCase().replace(/\s+/g, " ").trim()).filter((p) => p.length >= 120);
+  if (new Set(paragraphs).size !== paragraphs.length) issues.push("The story contains duplicate narrative paragraphs.");
   return issues;
 }
 

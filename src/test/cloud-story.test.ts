@@ -4,7 +4,7 @@ import { checkStory, storyInstructions, parseSceneCount, sceneContract, sceneHea
 const HORROR = "Create a horror story in exactly 5 scenes. Give me the full story plus, for each scene, a visual prompt and dialogue. Each scene must contain 25 to 30 words of dialogue. Keep the same characters, clothing and one fixed background.";
 
 function sceneWith(words: number, n = 1): string {
-  const line = "MARA: " + Array.from({ length: words }, (_, i) => `w${i + 1}`).join(" ");
+  const line = "MARA: " + Array.from({ length: words }, (_, i) => `s${n}w${i + 1}`).join(" ");
   return `## Scene ${n}\n\n### Visual Prompt\nA dim cabin interior, dust in the air.\n\n### Dialogue\n${line}\n`;
 }
 

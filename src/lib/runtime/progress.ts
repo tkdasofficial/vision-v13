@@ -13,6 +13,8 @@ export function runtimeStageStep(stage: string): [JobStatus, string] | null {
     retrying_story: ["retrying", "Correcting the story format"],
     validating_story: ["validating_output", "Checking the story format"],
     assembling: ["packaging", "Assembling the final document"],
+    reviewing_story: ["verifying", "Reviewing story continuity and character behavior"],
+    repairing_story: ["fixing", "Repairing the affected story paragraph"],
   };
   if (stages[stage]) return stages[stage];
   const scene = stage.match(/^(writing|retrying|correcting|validating)_scene_(\d+)$/);

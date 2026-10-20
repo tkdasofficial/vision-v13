@@ -379,6 +379,10 @@ export const reviewSchema = z.object({
   ),
 });
 export type StoryReview = z.infer<typeof reviewSchema>;
+export const STORY_REVIEW_PROMPT = `Independently review original requirements, canon, scene contracts and validated dependencies. For a plan review mandatory coverage and complete causal manifest; for a scene review story beats, visual/action agreement, dialogue/knowledge and state; for final audit examine the whole story and arc. JSON only: {checks:{story:true,visual:true,dialogue:true,continuity:true,instructions:true,structure:true},issues:[{severity:"critical|warning",category:"story|visual|dialogue|continuity|instructions|structure",sceneId,reference,evidence,correction}]}. False for any unchecked/failed category. Cite canonical fact/original requirement and exact conflicting evidence; name the smallest affected scene. Never pass unresolved critical contradictions.`;
+export function storyReviewIssues(r: StoryReview, id: string): StoryIssue[] {
+  return [...r.issues, ...STORY_CATEGORIES.filter((c) => !r.checks[c] && !r.issues.some((i) => i.category === c && i.severity === "critical")).map((category): StoryIssue => ({ severity: "critical", category, sceneId: id, reference: "review coverage", evidence: `${category} check failed or was not performed`, correction: "Complete this check and identify the smallest affected section." }))];
+}
 export function parseStoryJson<T>(raw: string, schema: z.ZodType<T>): T {
   const clean = raw
     .replace(/<think>[\s\S]*?<\/think>/g, "")

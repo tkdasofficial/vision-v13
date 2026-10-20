@@ -18,8 +18,9 @@ const PROMPT = "Create a horror story in exactly 2 scenes. Give me the full stor
 const model = { provider: "nvidia" as const, model: "m", label: "m" };
 const ok = (text: string) => ({ ok: true as const, text, finishReason: "stop", model });
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i + 1}`).join(" ");
-const scene = (n: number, w: number) => `## Scene ${n}\n\n### Visual Prompt\nThe same dim cabin interior, dust in the air.\n\n### Dialogue\nMARA: ${words(w)}\n`;
+const scene = (n: number, w: number) => `## Scene ${n}\n\n### Visual Prompt\nThe same dim cabin interior, dust in the air.\n\n### Dialogue\nMARA: ${words(w).replace("word1 ", `scene${n} `)}\n`;
 const STORY = "Mara arrives at the cabin. ".repeat(60);
+const review = (issues: unknown[] = [], checks = {}) => JSON.stringify({ checks: { story: true, visual: true, dialogue: true, continuity: true, instructions: true, structure: true, ...checks }, issues });
 
 function scripted(badFirst: Set<number>) {
   const seen = new Map<number, number>();
@@ -27,8 +28,13 @@ function scripted(badFirst: Set<number>) {
   const call = async (messages: any[]) => {
     const sys = String(messages[0].content);
     const user = String(messages[1]?.content ?? "");
-    if (sys.startsWith("Create a master blueprint")) { calls.push("blueprint"); return ok("Setting: one cabin. Character: Mara, grey coat."); }
+    if (sys.startsWith("Create a master blueprint")) {
+      calls.push("blueprint");
+      const count = Number(sys.match(/exactly (\d+) ordered beats/)?.[1] ?? 2);
+      return ok(JSON.stringify({ worldRules: ["Realistic"], characters: [{ name: "Mara", appearance: "red hair", clothing: "grey coat", personality: "brave", motivation: "protect others", abilities: "human", limitations: "cannot fly", relationships: "friend" }], visualContinuity: { locations: "cabin", props: "lamp", lighting: "dim", weather: "rain" }, beats: Array.from({ length: count }, (_, i) => ({ scene: i + 1, goal: "help", obstacle: "darkness", consequence: "progress", emotion: "hope", before: "cabin", after: "cabin", transition: "continues", unresolved: "rescue" })) }));
+    }
     if (sys.startsWith("Write the complete story")) { calls.push("story"); return ok(STORY); }
+    if (sys.startsWith("Independently review")) { calls.push("review"); return ok(review()); }
     const n = Number(user.match(/Write scene (\d+)/)?.[1] ?? 0);
     const tries = (seen.get(n) ?? 0) + 1;
     seen.set(n, tries);
@@ -50,7 +56,7 @@ describe("runCloudStoryJob", () => {
       return base.call(messages);
     };
     await runCloudStoryJob(job, PROMPT, { call });
-    expect(observed).toEqual(["planning", "writing_content", "writing_content", "retrying", "writing_content"]);
+    expect(observed).toEqual(["planning", "writing_content", "writing_content", "retrying", "writing_content", "verifying"]);
     expect(job.steps.some((s) => s.status === "validating_output")).toBe(true);
     expect(job.steps.at(-1)?.status).toBe("saving");
     const writes = h.d1Calls.filter((c) => c.sql.startsWith("UPDATE jobs SET status = ?"));
@@ -189,11 +195,107 @@ describe("Workers Free plan: one provider call per queue run", () => {
     while (out === "yield" && runs < 30) { runs++; out = await runCloudStoryJob(job, PROMPT, { call: s.call, maxCalls: 1 }); }
     expect(out).toBe("done");
     // blueprint, story, scene1, scene2 draft, scene2 regeneration — each exactly once.
-    expect(s.calls).toEqual(["blueprint", "story", "scene1#1", "scene2#1", "scene2#2"]);
+    expect(s.calls).toEqual(["blueprint", "story", "scene1#1", "scene2#1", "scene2#2", "review"]);
     expect(runs).toBe(s.calls.length);
     const firstSceneStages = h.d1Calls.filter((c) => c.sql.startsWith("UPDATE runtime_jobs SET stage") && c.params[0] === "writing_scene_1");
     expect(firstSceneStages).toHaveLength(2); // pre-call yield + generation; not replayed after acceptance
     expect(h.d1Calls.some((c) => c.sql.includes("status = 'uploaded'"))).toBe(true);
+  });
+});
+
+describe("checkpointed semantic story quality", () => {
+  const request = "Create a story of 5 scenes with visual prompts and dialogue about Mira in a yellow raincoat and her normal grey cat Pip rescuing a fishing boat at a lighthouse.";
+  const evidence = "Pip operates the radar.";
+  const issue = { severity: "critical", category: "continuity", sceneId: "scene:2", reference: "normal cat capability", evidence, correction: "Have Mira operate the radar; Pip alerts her by meowing." };
+  function qualityScript(mode: "repair" | "stuck" | "malformed" | "unchecked" = "repair") {
+    const base = scripted(new Set());
+    const calls: string[] = [];
+    const call = async (messages: any[]) => {
+      const system = String(messages[0].content);
+      const user = String(messages[1]?.content ?? "");
+      if (system.startsWith("Independently review")) {
+        calls.push("review");
+        if (mode === "malformed") return ok("not a report");
+        if (mode === "unchecked") return ok(review([], { continuity: false }));
+        const input = JSON.parse(user);
+        return ok(review(input.scenes[1].text.includes(evidence) ? [issue] : []));
+      }
+      if (system.startsWith("Fix Prompt: repair only scene 2")) {
+        calls.push("repair2");
+        return ok(scene(2, 27).replace("The same dim cabin interior, dust in the air.", mode === "stuck" ? evidence : "Mira operates the radar. Pip meows at her from the lighthouse floor."));
+      }
+      const n = Number(user.match(/Write scene (\d+)/)?.[1] ?? 0);
+      if (n) { calls.push(`scene${n}`); return ok(scene(n, 27).replace("The same dim cabin interior, dust in the air.", n === 2 ? evidence : `Mira and Pip at lighthouse beat ${n}, yellow raincoat and grey fur.`)); }
+      calls.push(system.startsWith("Create a master") ? "blueprint" : "story");
+      return base.call(messages);
+    };
+    return { call, calls };
+  }
+  it("repairs only the conflicting scene, rechecks all dependencies and delivers five scenes", async () => {
+    const s = qualityScript();
+    const job = new JobRun("job-quality", "user-1");
+    job.sessionId = "origin-chat";
+    let result = "yield";
+    for (let n = 0; n < 30 && result === "yield"; n++) result = await runCloudStoryJob(job, request, { call: s.call, maxCalls: 1 });
+    expect(result).toBe("done");
+    expect(s.calls).toEqual(["blueprint", "story", "scene1", "scene2", "scene3", "scene4", "scene5", "review", "repair2", "review"]);
+    expect(h.artifact).not.toContain(evidence);
+    expect(h.artifact.match(/## Scene \d/g)).toHaveLength(5);
+    expect(h.artifact).toContain("Mira operates the radar.");
+    for (const n of [1, 3, 4, 5]) expect(h.artifact).toContain(`lighthouse beat ${n}`);
+    const uploaded = h.d1Calls.find((c) => c.sql.includes("status = 'uploaded'"));
+    expect(JSON.parse(String(uploaded?.params[5])).quality).toMatchObject({ passed: true, repairs: { "scene:2": 1 } });
+  });
+  it("bounds persistent repair failure across queue runs, retaining drafts and real findings", async () => {
+    const s = qualityScript("stuck");
+    const job = new JobRun("job-quality-stuck", "user-1");
+    for (let n = 0; n < 30; n++) { if (await runCloudStoryJob(job, request, { call: s.call, maxCalls: 1 }) === "done") break; }
+    expect(s.calls.filter((c) => c === "repair2")).toHaveLength(2);
+    expect(h.artifact).toBe("");
+    expect(h.d1Calls.find((c) => c.sql.includes("SET status = 'failed'"))?.params[0]).toContain("Unresolved scene:2 continuity");
+    const fakeSlots = await h.db("SELECT slot_id, slot_type, status FROM generation_slots ORDER BY slot_id");
+    expect(fakeSlots.every((s: any) => s.status === "free")).toBe(true);
+  });
+  it.each(["malformed", "unchecked"] as const)("does not approve a %s semantic report", async (mode) => {
+    const s = qualityScript(mode);
+    await runCloudStoryJob(new JobRun(`job-quality-${mode}`, "user-1"), request, { call: s.call });
+    expect(h.artifact).toBe("");
+    expect(h.d1Calls.some((c) => c.sql.includes("SET status = 'failed'"))).toBe(true);
+    expect(s.calls).not.toContain("repair2");
+  });
+  it("adds only one semantic call for a clean five-scene baseline, preserving generation limits", async () => {
+    const base = scripted(new Set());
+    await runCloudStoryJob(new JobRun("job-quality-clean", "user-1"), PROMPT.replace("2 scenes", "5 scenes"), { call: base.call });
+    expect(base.calls).toEqual(["blueprint", "story", "scene1#1", "scene2#1", "scene3#1", "scene4#1", "scene5#1", "review"]);
+    expect(h.artifact).toContain("## Scene 5");
+  });
+  it("charges interrupted repairs durably without charging pre-call queue yields", async () => {
+    const fake = fakeDb(); h.db = fake.db;
+    const s = qualityScript();
+    const job = new JobRun("job-quality-interrupted", "user-1");
+    const call = async (messages: any[]) => {
+      if (String(messages[0].content).startsWith("Fix Prompt: repair only scene 2")) throw new Error("interrupted transport");
+      return s.call(messages);
+    };
+    for (let n = 0; n < 8; n++) expect(await runCloudStoryJob(job, request, { call, maxCalls: 1 })).toBe("yield");
+    expect(JSON.parse(fake.slots.get(1).result).repairs).toEqual({});
+    await expect(runCloudStoryJob(job, request, { call, maxCalls: 1 })).rejects.toThrow("interrupted transport");
+    expect(JSON.parse(fake.slots.get(1).result).repairs).toEqual({ "scene:2": 1 });
+    await expect(runCloudStoryJob(job, request, { call, maxCalls: 1 })).rejects.toThrow("interrupted transport");
+    expect(JSON.parse(fake.slots.get(1).result).repairs).toEqual({ "scene:2": 2 });
+    await runCloudStoryJob(job, request, { call, maxCalls: 1 });
+    expect(h.artifact).toBe("");
+    expect([...fake.records.values()].some((r) => r.content.includes(evidence))).toBe(true);
+  });
+  it("never reuses a passed audit after accepted scene content changes", async () => {
+    const fake = fakeDb(); h.db = fake.db;
+    const s = scripted(new Set());
+    const job = new JobRun("job-quality-stale", "user-1");
+    await runCloudStoryJob(job, PROMPT, { call: s.call });
+    const saved = fake.slots.get(4);
+    fake.records.get(saved.result_ref).content += "\nChanged scene evidence.";
+    await runCloudStoryJob(job, PROMPT, { call: s.call });
+    expect(s.calls.filter((c) => c === "review")).toHaveLength(2);
   });
 });
 
@@ -209,7 +311,7 @@ describe("scene repair keeps the best version", () => {
     let s1 = 0;
     const call = async (messages: any[]) => {
       const user = String(messages[1]?.content ?? "");
-      if (/Write scene 1 of/.test(user)) { s1++; return ok(scene(1, 8)); } // short dialogue: one issue
+      if (/Write scene 1 of/.test(user) && !String(messages[0].content).startsWith("Fix Prompt")) { s1++; return ok(scene(1, 8)); } // short dialogue: one issue
       if (String(messages[0].content).startsWith("Fix Prompt") && /Scene 1/.test(user)) return ok(s1++ === 2 ? "| table | only |" : scene(1, 27));
       return base.call(messages);
     };
