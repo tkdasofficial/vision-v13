@@ -21,7 +21,7 @@ export default function MemorySettings() {
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
-    try { await fn(); toast.success(ok); await load(); } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    try { await fn(); toast.success(ok); await load(); return true; } catch (e: any) { toast.error(e.message); return false; } finally { setBusy(false); }
   };
 
   return (
@@ -37,7 +37,7 @@ export default function MemorySettings() {
             <Search className="size-4 text-muted-foreground" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search memories" aria-label="Search memories" className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" />
           </label>
-          {error && <p className="px-2 text-sm text-destructive">{error} <button className="underline" onClick={load}>Retry</button></p>}
+          {error && <p className="px-2 text-sm text-destructive">{error} <Button variant="ghost" size="sm" onClick={load}>Retry</Button></p>}
           {!items && !error && <p className="flex items-center gap-2 px-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Loading…</p>}
           {items && !shown.length && <p className="px-2 py-4 text-center text-sm text-muted-foreground">{items.length ? "No memories match your search." : "No saved memories yet."}</p>}
           <ul className="space-y-2">
@@ -50,14 +50,14 @@ export default function MemorySettings() {
                     <div className="flex justify-end gap-2">
                       <Button size="sm" variant="ghost" onClick={() => setEditing(null)} aria-label="Cancel"><X className="size-4" /></Button>
                       <Button size="sm" variant="floating" disabled={busy || editing.text.trim().length < 2} aria-label="Save"
-                        onClick={() => run(() => editMemory(m.id, editing.text), "Memory updated").then(() => setEditing(null))}><Check className="size-4" /></Button>
+                        onClick={() => run(() => editMemory(m.id, editing.text), "Memory updated").then((ok) => { if (ok) setEditing(null); })}><Check className="size-4" /></Button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-sm text-foreground">{m.content}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{m.source === "auto" ? "Learned from chat" : "You asked to remember"} · {new Date(m.updatedAt).toLocaleDateString()}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{m.source === "auto" ? "Learned from chat" : "You asked to remember"} · {m.category ?? "context"} · {m.status ?? "active"} · {new Date(m.updatedAt).toLocaleDateString()}</p>
                     </div>
                     <Button size="icon" variant="ghost" aria-label="Edit memory" onClick={() => setEditing({ id: m.id, text: m.content })}><Pencil className="size-4" /></Button>
                     <Button size="icon" variant="ghost" aria-label="Delete memory" disabled={busy} onClick={() => run(() => deleteMemory(m.id), "Memory deleted")}><Trash2 className="size-4" /></Button>
