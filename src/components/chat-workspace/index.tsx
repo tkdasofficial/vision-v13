@@ -58,6 +58,9 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
   const [isTyping, setIsTyping] = useState(false);
   // Anything in flight that the send button can stop: a streaming reply and/or backend tasks of this chat.
   const [streaming, setStreaming] = useState(false);
+  const handleJobUpdate = useCallback((id: string, job: NonNullable<ChatMessageType["job"]>) => {
+    setMessages((prev) => prev.map((m) => m.id === id && m.job !== job ? { ...m, job } : m));
+  }, []);
   const [activeJobs, setActiveJobs] = useState<Set<string>>(new Set());
   const [jobRestoreError, setJobRestoreError] = useState<string | null>(null);
   const [jobRestoreAttempt, setJobRestoreAttempt] = useState(0);
@@ -567,7 +570,7 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
         const steps = revealPlan(replyText);
         setIsTyping(false);
         for (const st of steps.slice(0, -1)) {
-          put({ ...reply, content: replyText.slice(0, st.upto) });
+          put({ ...reply, responsePending: true, content: replyText.slice(0, st.upto) });
           await new Promise((res) => setTimeout(res, st.delayMs));
           if (abortRef.current && abortRef.current !== ctrl) break; // a newer request took over
         }
@@ -746,6 +749,7 @@ const ChatWorkspace = ({ tool, onMenuClick, initialMessages, chatId: externalCha
                 onDelete={handleDeleteReply}
                 onBranch={handleBranchReply}
                 onReport={isIncognito ? undefined : handleReportReply}
+                onJobUpdate={handleJobUpdate}
               />
             ))}
             {jobRestoreError && <div role="alert" className="mx-auto flex max-w-2xl flex-wrap items-center gap-2 px-3 py-3 text-sm text-muted-foreground"><span>Couldn't load saved results. {jobRestoreError}</span><Button variant="secondary" size="sm" onClick={() => setJobRestoreAttempt((n) => n + 1)}>Try again</Button></div>}

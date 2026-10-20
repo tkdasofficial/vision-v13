@@ -15,9 +15,11 @@ import { Button } from "@/components/ui/button";
 import TaskStatus from "@/components/task-status";
 import { MessageActions, MessageAction } from "@/components/ai-elements/message-actions";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { replyText } from "@/lib/reply-actions";
+import { replyText, canUseReplyActions, speechChunks } from "@/lib/reply-actions";
+import { copyToClipboard } from "@/lib/clipboard";
+import { useCopy } from "@/components/chat/use-copy";
 
-type Props = { message: ChatMessageType; isNew?: boolean; fallbackSeconds?: number; onDelete?: (id: string) => Promise<void>; onBranch?: (id: string) => Promise<void>; onReport?: (id: string) => Promise<void> };
+type Props = { message: ChatMessageType; isNew?: boolean; fallbackSeconds?: number; onDelete?: (id: string) => Promise<void>; onBranch?: (id: string) => Promise<void>; onReport?: (id: string) => Promise<void>; onJobUpdate?: (id: string, job: NonNullable<ChatMessageType["job"]>) => void };
 
 /**
  * Persistent activity record for a finished reply: a collapsed "Worked for Ns" row that expands
@@ -53,20 +55,15 @@ const proseClasses = [
 
 /* ── Copy button for task card ── */
 const CardCopyButton = ({ content }: { content: string }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const { copied, copy } = useCopy();
   return (
-    <button
-      onClick={handleCopy}
+    <Button variant="ghost" size="sm"
+      onClick={() => void copy(content)}
       className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent/80 bg-accent border border-border transition-colors"
     >
       {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
       {copied ? "Copied" : "Copy"}
-    </button>
+    </Button>
   );
 };
 
@@ -211,7 +208,7 @@ const useSegmentedTypewriter = (segments: Segment[], enabled: boolean) => {
 };
 
 
-const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false, fallbackSeconds = 0, onDelete, onBranch, onReport }, ref) => {
+const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false, fallbackSeconds = 0, onDelete, onBranch, onReport, onJobUpdate }, ref) => {
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -219,6 +216,11 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
   const [actionBusy, setActionBusy] = useState(false);
   const { toast } = useToast();
   const mountedRef = useRef(false);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+  useEffect(() => () => {
+    if (speechRef.current && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    speechRef.current = null;
+  }, []);
 
   // Validated replies already use the workspace's bounded reveal schedule.
   // A second character animation can hide long answers after completion.
@@ -227,46 +229,60 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
 
   const segments = useMemo(() => splitContent(message.content), [message.content]);
   const { charCounts, allDone: typingDone } = useSegmentedTypewriter(segments, shouldAnimate);
+  const actionsReady = canUseReplyActions(message, typingDone && segments.every((seg, i) => (charCounts[i] ?? 0) >= seg.content.length));
+  const updateJob = useCallback((job: NonNullable<ChatMessageType["job"]>) => onJobUpdate?.(message.id, job), [message.id, onJobUpdate]);
 
   const size = getMessageSize(message.content);
 
   const handleCopy = async () => {
-    try { await navigator.clipboard.writeText(replyText(message)); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    if (!actionsReady) return;
+    try { await copyToClipboard(replyText(message)); setCopied(true); setTimeout(() => setCopied(false), 2000); }
     catch { toast({ title: "Couldn't copy", variant: "destructive" }); }
   };
 
   const handleSpeak = useCallback(() => {
-    if (speaking) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-      return;
-    }
-    if (!("speechSynthesis" in window)) {
+    if (!actionsReady) return;
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
       toast({ title: "Not supported", description: "Text-to-speech is not supported in this browser.", variant: "destructive" });
       return;
     }
-    const plainText = replyText(message)
-      .replace(/```[\s\S]*?```/g, " code block ")
-      .replace(/`([^`]+)`/g, "$1")
-      .replace(/[#*_~>\-|]/g, "")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/\n+/g, ". ")
-      .trim();
-    const utterance = new SpeechSynthesisUtterance(plainText);
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      speechRef.current = null;
+      setSpeaking(false);
+      return;
+    }
+    const chunks = speechChunks(replyText(message));
+    if (!chunks.length) return;
+    window.speechSynthesis.cancel();
+    const speakNext = (index: number) => {
+      const text = chunks[index];
+      if (!text) { speechRef.current = null; setSpeaking(false); return; }
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechRef.current = utterance;
+      utterance.onend = () => { if (speechRef.current === utterance) speakNext(index + 1); };
+      utterance.onerror = () => {
+        if (speechRef.current !== utterance) return;
+        speechRef.current = null; setSpeaking(false);
+        toast({ title: "Couldn't speak", description: "Check your browser's speech support.", variant: "destructive" });
+      };
+      window.speechSynthesis.speak(utterance);
+    };
     setSpeaking(true);
-    window.speechSynthesis.speak(utterance);
-  }, [speaking, message.content, toast]);
+    speakNext(0);
+  }, [speaking, message, toast, actionsReady]);
 
   const handleShare = async () => {
+    if (!actionsReady) return;
+    const text = replyText(message);
     try {
-      const text = replyText(message);
       if (navigator.share) await navigator.share({ title: "Vision reply", text });
-      else { await navigator.clipboard.writeText(text); toast({ title: "Reply copied for sharing" }); }
-    } catch (error) { if (!(error instanceof Error && error.name === "AbortError")) toast({ title: "Couldn't share", variant: "destructive" }); }
+      else { await copyToClipboard(text); toast({ title: "Reply copied for sharing" }); }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      try { await copyToClipboard(text); toast({ title: "Reply copied for sharing" }); }
+      catch { toast({ title: "Couldn't share", variant: "destructive" }); }
+    }
   };
   const runAction = async (action?: (id: string) => Promise<void>, report = false) => {
     if (!action) return;
@@ -322,7 +338,7 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
 
               return (
                 <div key={i} className="relative w-full will-change-contents">
-                  {seg.type === "task" && charCounts[i] >= seg.content.length && (
+                  {actionsReady && seg.type === "task" && charCounts[i] >= seg.content.length && (
                     <div className="flex justify-end mb-1"><CardCopyButton content={seg.content} /></div>
                   )}
                   <div className={cn(
@@ -339,7 +355,7 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
             {message.webApp && (
               <WebAppPreviewCard project={message.webApp} />
             )}
-            {message.job && <JobCard job={message.job} />}
+            {message.job && <JobCard job={message.job} onUpdate={updateJob} />}
             {message.zipAnalysis && (
               <ZipAnalysisCard analysis={message.zipAnalysis} />
             )}
@@ -350,7 +366,7 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
               <FileCreatorCard file={message.generatedFile} />
             )}
             {/* Action bar */}
-            <MessageActions className="gap-1 pt-1 text-muted-foreground" aria-label="Reply actions">
+            {actionsReady && <MessageActions className="gap-1 pt-1 text-muted-foreground" aria-label="Reply actions">
               <MessageAction tooltip="Copy" aria-label="Copy" onClick={() => void handleCopy()}>{copied ? <Check /> : <Copy />}</MessageAction>
               <MessageAction tooltip={speaking ? "Stop speaking" : "Speak"} aria-label={speaking ? "Stop speaking" : "Speak"} onClick={handleSpeak}>{speaking ? <VolumeX /> : <Volume2 />}</MessageAction>
               <MessageAction tooltip="Share" aria-label="Share" onClick={() => void handleShare()}><Share2 /></MessageAction>
@@ -361,7 +377,7 @@ const ChatMessage = forwardRef<HTMLDivElement, Props>(({ message, isNew = false,
                   <DropdownMenuItem disabled={actionBusy || !onBranch} onSelect={() => void runAction(onBranch)}><GitBranch />Create Branch</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </MessageActions>
+            </MessageActions>}
           </div>
         </div>
       )}

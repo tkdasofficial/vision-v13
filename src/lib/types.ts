@@ -87,6 +87,8 @@ export type PastedBlock = { title: string; lines: number; text: string };
 export type MessageAttachment = { name: string; kind: "image" | "video" | "audio" | "file"; mime?: string; size?: number };
 
 export type ChatMessage = {
+  /** UI-only gate while a completed answer is still being revealed. */
+  responsePending?: boolean;
   /** Durable tombstone prevents removed file replies being restored from jobs. */
   deleted?: boolean;
   /** A branch keeps the result snapshot without starting or duplicating a job. */
