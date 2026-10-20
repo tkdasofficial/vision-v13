@@ -119,7 +119,7 @@ export class JobRun {
           const { textOf } = await import("@/lib/tools/registry.server");
           content=await textOf({ name,mime,bytes });
         }
-        await recordIntelligenceArtifact(this.userId,this.sessionId,id,content,{ request:input.prompt, parentId:input.sourceId,artifactId:id,title:name,operation:"tool_output" });
+        await recordIntelligenceArtifact(this.userId,this.sessionId,id,content,{ request:input.prompt, parentId:input.sourceId,artifactId:id,title:name,kind:/\.(?:py|js|ts|css|html?)$/i.test(name) ? "code" : mime.startsWith("image/") ? "image" : "document",operation:"tool_output" });
       }
     }
     return { id, name, size: bytes.length, kind: kind === "source" ? "file" : kind };
