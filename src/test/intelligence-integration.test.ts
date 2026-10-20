@@ -83,10 +83,10 @@ describe("integrated artifact continuity",() => {
     expect(result.steps[0].artifacts[0].id).toBe("pdf-id");expect((checkpoints.at(-1) as any).done[0].artifactIds).toEqual(["pdf-id"]);
   });
   it("tool selection does not silently pick a wrong attached file",async()=>{
-    const {TOOL_MAP}=await import("@/lib/tools/registry.server");const tool=TOOL_MAP.get("extract_text");if(!tool)throw new Error("Missing extract tool");
+    const {TOOL_MAP}=await import("@/lib/tools/registry.server");const tool=TOOL_MAP.get("convert_document");if(!tool)throw new Error("Missing conversion tool");
     const ctx={files:[{name:"coral.txt",mime:"text/plain",bytes:new TextEncoder().encode(report)},{name:"volcano.txt",mime:"text/plain",bytes:new TextEncoder().encode("Volcano report")}],lastText:"",complete:async()=>"",note:async()=>{}};
-    await expect(tool.run(ctx,{})).rejects.toThrow("Which file");
-    await expect(tool.run(ctx,{file:"missing.txt"})).rejects.toThrow("not available");
+    await expect(tool.run(ctx,{to:"md"})).rejects.toThrow("Which file");
+    await expect(tool.run(ctx,{to:"md",file:"missing.txt"})).rejects.toThrow("not available");
   });
   it("migration is additive and idempotent",()=>{
     state.db?.exec(readFileSync("db/main-migrations/0002_intelligence_artifacts.sql","utf8"));
