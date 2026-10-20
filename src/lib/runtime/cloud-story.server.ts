@@ -17,7 +17,7 @@ import { SLOT_LIMITS } from "../sandbox/slots";
 import { openStoryWorkspace } from "../sandbox/story-workspace.server";
 import { storyDialogueRange, requiresFixedStoryBackground } from "../ai/story-output";
 import { normalizeScene, parseSceneCount, sceneContract, sceneHeadings, scoreScene, assembleStoryDocument, validateAssembled, storyInstructions, checkStory, STORY_LIMITS } from "./cloud-story";
-import { blueprintInstructions, qualityReviewInstructions, parseQualityReview, replaceStoryParagraph, readQualityCheckpoint, validateQualityBlueprint, QUALITY_LIMITS } from "./story-quality";
+import { blueprintInstructions, qualityReviewInstructions, parseQualityReview, replaceStoryParagraph, readQualityCheckpoint, validateQualityBlueprint, duplicateStoryFindings, QUALITY_LIMITS } from "./story-quality";
 
 const now = () => new Date().toISOString();
 
@@ -334,6 +334,13 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     const hash = await sha256Hex(new TextEncoder().encode(JSON.stringify({ prompt, blueprint, story, scenes })));
     if (quality.hash !== hash || !quality.findings) {
       await setStage(job, "reviewing_story");
+      const duplicates = duplicateStoryFindings(story, scenes, prompt);
+      if (duplicates.length) {
+        quality.findings = duplicates;
+        quality.hash = hash;
+        quality.passed = false;
+        await checkpoint();
+      } else {
       const response = await call([
         { role: "system", content: qualityReviewInstructions },
         { role: "user", content: JSON.stringify({ request: prompt, blueprint, storyParagraphs: story.split(/\n\s*\n/).map((text, i) => ({ reference: `paragraph:${i + 1}`, text })), scenes: scenes.map((text, i) => ({ sceneId: `scene:${i + 1}`, text })), task: "Audit all scenes, narrative agreement and dependent boundaries; identify only grounded failures." }) },
@@ -344,6 +351,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       quality.hash = hash;
       quality.passed = !quality.findings.some((f) => f.severity === "critical");
       await checkpoint();
+      }
     }
     const finding = quality.findings?.find((f) => f.severity === "critical");
     if (!finding) break;

@@ -30,6 +30,32 @@ export function parseQualityReview(raw: string, story: string, scenes: string[])
   return findings;
 }
 
+/** Exact duplication is a concrete failure; semantic/style repetition stays model-reviewed. */
+export function duplicateStoryFindings(story: string, scenes: string[], request: string): StoryIssue[] {
+  const issues: StoryIssue[] = [];
+  const normalized = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
+  const seen = new Map<string, number>();
+  story.split(/\n\s*\n/).forEach((text, index) => {
+    const key = normalized(text);
+    if (key.length < 120) return;
+    if (seen.has(key)) issues.push({ severity: "critical", category: "story", sceneId: "story", reference: `paragraph:${index + 1}`, evidence: text, correction: "Replace only this duplicated paragraph with the missing planned beat, preserving neighboring events." });
+    else seen.set(key, index);
+  });
+  if (/\b(refrain|repeat(?:ed)? dialogue|same dialogue|identical prompts)\b/i.test(request)) return issues;
+  seen.clear();
+  scenes.forEach((scene, index) => {
+    for (const section of scene.matchAll(/^###\s+([^\n]+)\n([\s\S]*?)(?=^###\s|(?![\s\S]))/gm)) {
+      const text = section[2].trim();
+      if (normalized(text).length < 120) continue;
+      const key = `${section[1].toLowerCase()}:${normalized(text)}`;
+      const prior = seen.get(key);
+      if (prior !== undefined) issues.push({ severity: "critical", category: section[1].toLowerCase() === "dialogue" ? "dialogue" : "visual", sceneId: `scene:${index + 1}`, reference: `scene:${prior + 1}`, evidence: text, correction: `Replace the duplicated ${section[1]} with content for this scene's assigned beat; keep shared identity details and approved other sections.` });
+      else seen.set(key, index);
+    }
+  });
+  return issues;
+}
+
 export function replaceStoryParagraph(story: string, reference: string, replacement: string): string {
   const match = /^paragraph:(\d+)$/.exec(reference);
   const paragraphs = story.split(/\n\s*\n/);
