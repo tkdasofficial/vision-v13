@@ -17,8 +17,11 @@ const isNotice = (t: string) => /^(Working on it|Writing your file|Building your
 
 /** Finds a reference in `request` and resolves it against `history` (which must NOT include the current message). */
 export function resolveReference(request: string, history: ConvMsg[]): Resolution {
-  if (isContentAction(request)) {
-    const selected = selectArtifact(request, conversationArtifacts(history));
+  const artifacts = conversationArtifacts(history);
+  const artifactReference = /\b(report|story|poem|article|essay|script|letter|workbook|spreadsheet|code|document|draft|prompt|dialogue|chart)\b/i.test(request)
+    || /\bversion\b/i.test(request) && artifacts.some((r) => r.version > 1);
+  if (isContentAction(request) && artifactReference) {
+    const selected = selectArtifact(request, artifacts);
     if (selected.kind !== "none") return selected;
   }
   const t = request.toLowerCase();

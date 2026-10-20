@@ -41,6 +41,7 @@ export function conversationArtifacts(history: ConvMsg[]): ArtifactRecord[] {
 export function selectArtifact(request: string, records: ArtifactRecord[]): Resolution {
   const kind = KINDS.exec(request)?.[1]?.toLowerCase();
   const referenced = /\b(that|this|it|earlier|previous|original|latest|last|first|second|version)\b/i.test(request) || /\b(?:of|from)\s+(?:the|my|your)\b/i.test(request);
+  if (/\b(response|answer|reply|message)\b/i.test(request) && !kind) return { kind:"none" };
   if (!referenced) return { kind: "none" };
   let pool = records.filter((r) => !kind || kind === "document" || kind === "draft" || r.kind === kind || (kind === "report" && r.title.toLowerCase().includes("report")));
   if (!pool.length) return { kind: "none" };

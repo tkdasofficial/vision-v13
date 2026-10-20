@@ -30,6 +30,8 @@ export const Route = createFileRoute("/api/chat")({
         const keepAlive = await prepareKeepAlive();
         const body: any = await request.json().catch(() => null);
         const chatId = body?.incognito === true ? undefined : typeof body?.conversationId === "string" ? body.conversationId.slice(0, 64) : undefined;
+        const { ownedChat, resolveOwnedContext, handleTaskContinuity } = await import("@/lib/ai/intelligence-store.server");
+        if (chatId && !await ownedChat(caller.user.id,chatId)) return Response.json({ error:"Conversation not found." },{ status:404 });
         const { loadConversationHistory } = await import("@/lib/ai/memory.server");
         const { restoreConversationHistory } = await import("@/lib/ai/conversation-history");
         const incoming = Array.isArray(body?.messages) ? body.messages.slice(-200) : [];
@@ -82,6 +84,8 @@ export const Route = createFileRoute("/api/chat")({
         let memoryRan = false;
         let memoryReply: string | null = null;
         let memoryAuto: (() => Promise<unknown>) | null = null;
+        let contextReply: string | null = null;
+        let sourceId: string | undefined;
         const applyMemory = async (emitMem?: (stage: import("@/lib/ai/task-events").TaskStage, msg?: string) => void) => {
           if (memoryRan) return;
           memoryRan = true;
@@ -89,6 +93,7 @@ export const Route = createFileRoute("/api/chat")({
           const history = raw.slice(0, -1).filter((m: any) => typeof m.content === "string").map((m: any) => ({ role: m.role, content: m.content }));
           const result = await handleChatMemory({ userId: caller.user.id, chatId, owned: chatCtx.owned && body?.incognito !== true, scope: chatCtx.scope, text: lastText, history, emit: emitMem });
           memoryReply = result.reply;
+          if (!memoryReply) memoryReply = contextReply ?? await handleTaskContinuity(caller.user.id,chatId,lastText);
           memoryAuto = result.auto;
           if (result.block) system += `\n\n${result.block}`;
           // Recheck authoritative switches after commands, before all cross-chat retrieval.
@@ -151,11 +156,13 @@ export const Route = createFileRoute("/api/chat")({
         {
           const { resolveReference, sourceBlock, workingContext } = await import("@/lib/ai/references");
           const fullHist = (Array.isArray(body?.messages) ? body.messages.slice(0, -1) : []).map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter((p: any) => p.type === "text").map((p: any) => String(p.text ?? "")).join("\n") : "" }));
-          const ref = resolveReference(lastText, fullHist as any);
+          const owned = chatId ? await resolveOwnedContext(caller.user.id,chatId,lastText) : null;
+          const ref = owned?.ref ?? resolveReference(lastText, fullHist as any);
+          sourceId = owned?.sourceId;
           retrieved = ref.kind === "found" ? `Using ${ref.label}` : null;
           if (ref.kind === "found") system += `\n\n${sourceBlock(ref)}`;
-          else if (ref.kind === "missing") system += `\n\nThe user referred to "${ref.label}" but it does not exist: ${ref.reason} Say so; do not invent it.`;
-          else if (ref.kind === "ambiguous") system += `\n\nThe user's reference "${ref.label}" is ambiguous. Ask exactly this one question and nothing else: ${ref.question}`;
+          else if (ref.kind === "missing") contextReply = ref.reason;
+          else if (ref.kind === "ambiguous") contextReply = ref.question;
           const wc = workingContext(fullHist as any);
           if (wc.instructions.length) system += `\n\nActive instructions from earlier in this chat (latest correction wins):\n${wc.instructions.map((s) => `- ${s}`).join("\n")}`;
           if (budgeted.dropped && wc.summary) system += `\n\n${wc.summary}`;
@@ -227,7 +234,7 @@ export const Route = createFileRoute("/api/chat")({
                   const r = await runDeepEngine({ request: lastText, requestId, conversationId, analysis: deepAnalysis, baseSystem, call: call as any, reviewCall: reviewCall as any, store: d1ExecutionStore(caller.user.id), limits: { maxRetries: (await import("@/lib/ai/limits")).AI_LIMITS.outerRetries }, progress, log: (e) => console.log("[chat:deep:engine]", JSON.stringify({ user: caller.user.id, requestId, ...e })) });
                   console.log("[chat:deep]", JSON.stringify({ user: caller.user.id, engine: "tasks", model: usedModel, overall: r.state.overall, final: r.state.finalValidation, calls: r.calls, reused: r.reused, ms: Date.now() - t0 }));
                   if (r.state.overall === "failed" && !r.state.tasks.some((t) => t.output)) { progress("failed", "No result was generated"); put(sseChunk(ALL_PROVIDERS_UNAVAILABLE)); }
-                  else { await saveReply(caller.user.id, chatId, requestId, r.text, { executionMode: task.executionMode }); finishAutoMemory(); outcome = { status: "completed" }; for (let i = 0; i < r.text.length; i += 400) put(sseChunk(r.text.slice(i, i + 400))); }
+                  else { await saveReply(caller.user.id, chatId, requestId, r.text, { executionMode: task.executionMode,request:lastText,sourceId }); finishAutoMemory(); outcome = { status: "completed" }; for (let i = 0; i < r.text.length; i += 400) put(sseChunk(r.text.slice(i, i + 400))); }
                   return;
                 }
                 progress("analyzing");
@@ -243,7 +250,7 @@ export const Route = createFileRoute("/api/chat")({
                 const res = await runDeepPipeline({ messages: fullMessages as any, analysis: deepAnalysis, call: /^(scene|chapter|shot|panel|episode|beat)s?$/i.test(deepAnalysis.items?.noun ?? "") ? storyCall(deepModels) : call, fallbackCall: reviewCall, request: lastText, plan: deepAnalysis.complex || lastText.length > 400, review: true, progress, story: { requestId, adapter, store: d1StoryStore(caller.user.id), reviewCall: storyCall(deepModels.map((m) => m.provider === "nvidia" ? { ...m, model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning" } : m)) } });
                 console.log("[chat:deep]", JSON.stringify({ user: caller.user.id, model: usedModel, ok: res.ok, stages: res.stages, corrections: res.ok ? res.corrections : 0, remaining: res.ok ? res.remaining.length : null, ms: Date.now() - t0 }));
                 if (res.ok) {
-                  await saveReply(caller.user.id, chatId, requestId, res.text, { executionMode: task.executionMode });
+                  await saveReply(caller.user.id, chatId, requestId, res.text, { executionMode: task.executionMode,request:lastText,sourceId });
                   finishAutoMemory();
                   outcome = { status: "completed" };
                   for (let i = 0; i < res.text.length; i += 400) put(sseChunk(res.text.slice(i, i + 400)));
@@ -389,7 +396,7 @@ export const Route = createFileRoute("/api/chat")({
               }
               emit("finalizing");
               const answer = best.issues ? `${checkedText}\n\n> [!NOTE]\n> Verification note: after ${attempt} attempt${attempt === 1 ? "" : "s"} these checks still fail: ${best.list.slice(0, 3).map((i) => i.message).join(" ")}` : checkedText;
-              await saveReply(caller.user.id, chatId, taskId, answer, { executionMode: task.executionMode, output: task.output });
+              await saveReply(caller.user.id, chatId, taskId, answer, { executionMode: task.executionMode, output: task.output,request:lastText,sourceId });
               finishAutoMemory();
               outcome = { status: "completed" };
               await gen?.finish("completed");
