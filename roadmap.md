@@ -1,5 +1,11 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Story generation quality
+- [ ] Trace existing flow and run unchanged baseline tests/workflow.
+- [ ] Strengthen character/visual/causal context and existing structured validation; add bounded checkpointed local repairs.
+- [ ] Test five-scene continuity, capability/prop/dialogue contradictions, duplication, repair failure/recovery and delivery regressions.
+- [ ] Report actual before/after evidence, latency bounds and limitations; no automatic deployment.
+
 ## Current request — Truthful task statuses
 - [x] Generic running/processing, calculation, indexing and Deep work no longer show Executing; only explicit executing_code retains it. The manual terminal alias is checksum-only, not shell execution, so is not falsely labeled Executing.
 - [x] Story workers persist planning/writing/repair/validation/assembly/saving stages at real operation boundaries. Queue handoffs show Queued and polling cannot overwrite them with the previous run's stage; providers, limits and validation unchanged.
