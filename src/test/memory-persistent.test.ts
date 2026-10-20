@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
+import { readFileSync } from "node:fs";
 import { detectMemoryCommand, detectAutoMemory, relevantMemories, planMemoryWrite } from "@/lib/ai/memory";
 import { memoryPrivacy, userMemoryTarget } from "@/lib/ai/memory-policy";
 
@@ -72,6 +73,26 @@ describe("permanent lifecycle with real SQLite constraints", () => {
     expect(await store.loadPastChatsMemory("u1", "c1", "my dog")).toBe("");
     expect(state.db?.prepare("SELECT COUNT(*) AS n FROM chat_messages").get()?.n).toBe(1);
   });
+  it("new history remains usable after forgetting old facts", async () => {
+    await store.savePermanentMemory("u1", "my dog is Bruno");
+    await store.deletePermanentMemories("u1", "all");
+    state.db?.exec("INSERT INTO chat_messages VALUES('new','c2','user','My lighthouse project uses solar power','2099-01-01');");
+    expect(await store.loadPastChatsMemory("u1", "c1", "lighthouse")).toContain("solar power");
+  });
+  it("project retrieval also excludes pre-deletion historical facts", async () => {
+    state.db?.exec("UPDATE chat_sessions SET project_id='p1' WHERE id='c2'; INSERT INTO chat_messages VALUES('old','c2','user','my dog is Bruno','2020-01-01');");
+    await store.savePermanentMemory("u1", "my dog is Bruno");
+    await store.deletePermanentMemories("u1", "all");
+    expect(await store.loadProjectMemory("u1", "p1", "c1", "my dog")).toBe("");
+  });
+  it("the additive primary migration preserves existing memories", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec("CREATE TABLE user_memories(id TEXT PRIMARY KEY,user_id TEXT,content TEXT,created_at INTEGER,updated_at INTEGER,source TEXT); CREATE TABLE user_settings(id TEXT,user_id TEXT,prefs TEXT); INSERT INTO user_memories VALUES('old','u1','my editor is Vim',1,1,'explicit');");
+      db.exec(readFileSync("db/main-migrations/0001_persistent_memory.sql", "utf8"));
+      expect(db.prepare("SELECT content, status FROM user_memories WHERE id='old'").get()).toMatchObject({ content: "my editor is Vim", status: "active" });
+    } finally { db.close(); }
+  });
   it("turns both retrieval switches off, preserves facts, prevents saves, then enables", async () => {
     await store.savePermanentMemory("u1", "my favorite color is teal");
     await run("Turn memory off");
@@ -118,6 +139,18 @@ describe("permanent lifecycle with real SQLite constraints", () => {
     await store.savePermanentMemory("u1", "my favorite color is blue");
     await store.savePermanentMemory("u1", "my favorite color is teal", "auto");
     expect((await store.loadPermanentMemories("u1"))[0]?.content).toBe("my favorite color is blue");
+  });
+  it("Settings edits remain allowed when recall is disabled", async () => {
+    const saved = await store.savePermanentMemory("u1", "my dog is Bruno");
+    await store.setMemoryEnabled("u1", false);
+    expect(await store.editMemory("u1", saved?.memory.id ?? "missing", "my dog is Pip")).toBe(true);
+    expect((await run("What do you remember about me?")).reply).not.toContain("Pip");
+  });
+  it("ambiguous forget requests never remove any matching candidate", async () => {
+    await store.savePermanentMemory("u1", "my favorite color is teal");
+    await store.savePermanentMemory("u1", "my favorite food is rice");
+    await run("Forget my favorite");
+    expect(await store.loadPermanentMemories("u1")).toHaveLength(2);
   });
   it("automatic formation is deferred and never runs on explicit forget/disable", async () => {
     const r = await run("I live in Kolkata");
@@ -166,6 +199,10 @@ describe("privacy and relevance", () => {
     expect(detectAutoMemory("Today I live in Paris")).toBeNull();
     expect(detectAutoMemory('He said "my name is Mira"')).toBeNull();
     expect(detectAutoMemory("I'm building a lighthouse management project")).toBe("I'm building a lighthouse management project");
+  });
+  it("contextual save of private information asks for explicit consent", async () => {
+    await run("Remember this", { history: [{ role: "user", content: "My home address is 10 Example Road" }] });
+    expect(await store.loadPermanentMemories("u1")).toEqual([]);
   });
   it("injects relevant facts only and respects the budget", () => {
     const facts = [{ id: "a", content: "my dog is Bruno", createdAt: 2 }, { id: "b", content: "my editor is Neovim", createdAt: 1 }];
