@@ -1,5 +1,10 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Truthful task statuses
+- [ ] Reserve Executing for actual terminal commands; trace story/file/chat status producers and displays.
+- [ ] Align displayed stages with recorded backend work without synthetic progress or generation changes.
+- [ ] Test status contracts and rendering; disclose live verification and deployment limits.
+
 ## Current request — Completed response actions
 - [x] Gate all four footer actions on successful completion and full display, including Deep, failed/stopped replies and jobs; reveal fragments carry a UI-only pending flag.
 - [x] Share clipboard fallback across footer/block Copy and Share; queue long speech safely; copy actual visible story/job result; synchronize JobCard updates back to footer. Fourth control remains existing More options (Report/Delete/Branch), not a new Edit feature.
