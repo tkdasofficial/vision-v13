@@ -1,11 +1,12 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
 ## Current request — Reliable persistent memory
-- [ ] Extend deterministic natural-language commands and contextual clarification; sensitive-data filtering and explicit priority.
-- [ ] Harden permanent D1 lifecycle with additive metadata, atomic deduplication, concurrency guards, and privacy controls; preserve chats and sandbox.
-- [ ] Integrate commands and bounded retrieval in existing chat/Settings without changing providers or generation.
-- [ ] Run new memory tests and complete suite; verify authenticated flow when a usable session exists.
-- [ ] Report implementation, migration, test evidence and remaining limits; do not deploy with unresolved risks.
+- [x] Extend deterministic natural-language commands/context clarification, credential filtering, contextual private-data consent and explicit priority.
+- [x] Add main-D1 metadata/unique keys/CAS/privacy revisions and history cutoff; preserve existing rows, chats and sandbox. Migration tested on real SQLite; not applied live.
+- [x] Integrate provider-independent commands, deferred extraction and bounded retrieval; Settings atomic switches/source/status controls.
+- [x] New tests and full-suite validation; see `docs/persistent-memory-report.md` for evidence and conservative-history trade-off.
+- [ ] Authenticated UI-to-Cloudflare acceptance check — blocked by no usable account session and old deployed server. No automatic deployment this turn.
+- [x] Record implementation/migration/limits in `docs/persistent-memory-report.md`; do not claim ChatGPT parity or authenticated acceptance.
 
 ## Current request — AI response upgrade
 - [x] Fix internal-story delivery leakage and reject bold/inline leaked or repeated scene components; saved history untouched.
