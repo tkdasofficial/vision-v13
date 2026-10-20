@@ -1,11 +1,13 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
 ## Current request — Complete intelligence system
-- [ ] Audit all ten capabilities and preserve existing architecture, identity checks, data and provider configuration.
-- [ ] Integrate owner-scoped artifact lineage, contextual retrieval and task continuity into actual chat/file execution.
-- [ ] Add generalized reference/ambiguity/planning verification tests and additive persistence where required.
-- [ ] Run relevant and full regression tests; document authenticated end-to-end blockers honestly. No automatic deployment.
-- [ ] Report all ten implementation statuses, database changes, test evidence and deployment readiness.
+- [x] Audit all ten capabilities; preserve existing architecture, identity checks, data and provider configuration.
+- [x] Integrate owner-scoped immutable artifact lineage, bounded subject retrieval and checkpoint-based task commands into chat/file execution.
+- [x] Add main-D1 migration and 16 integration tests including actual PDF/agent execution, reload/version, ambiguity, privacy and task selection.
+- [x] Final regression: 114 files, 1,697 passed, one optional fixture skipped; preview build OK; signed-out Settings redirect and APIs 401 verified.
+- [x] Report all ten statuses and limits in `docs/complete-intelligence-report.md`; no automatic deployment or live migration.
+- [ ] Authenticated twelve-scenario acceptance — blocked by no fresh authorized session and no deployment authorization; preview APIs still reach old Cloudflare code.
+- [ ] Broader semantic/binary/task-pause and complete legacy/runtime artifact coverage — beyond the implemented bounded paths; not accepted as complete. See report for explicit gaps.
 
 ## Current request — Reliable persistent memory
 - [x] Extend deterministic natural-language commands/context clarification, credential filtering, contextual private-data consent and explicit priority.
