@@ -21,7 +21,7 @@ import { blueprintInstructions, qualityReviewInstructions, parseQualityReview, r
 
 const now = () => new Date().toISOString();
 
-type Call = (messages: unknown[], maxTokens: number) => Promise<Completion>;
+type Call = (messages: unknown[], maxTokens: number, beforeDispatch?: () => Promise<void>) => Promise<Completion>;
 // On the Worker: one non-streaming reply per call (fits the Free plan's CPU limit).
 // Off-Worker dev: the streaming relay, since provider keys only live on Cloudflare.
 const defaultCall: Call = async (messages, maxTokens) => {
@@ -103,9 +103,11 @@ export async function runCloudStoryJob(job: JobRun, prompt: string, opts: { call
   const baseCall = opts.call ?? defaultCall;
   // Every provider call first proves liveness (heartbeat) and checks the invocation budget,
   // so a long job is split across queue runs instead of being killed mid-call.
-  const call: Call = async (messages, maxTokens) => {
+  const call: Call = async (messages, maxTokens, beforeDispatch) => {
     // Free plan: each queue run makes at most maxCalls provider calls, then hands off to a fresh run.
     if (Date.now() >= deadlineAt || calls >= maxCalls) throw new StoryYield();
+    // Reserve the edit before provider work, but never charge a pre-call queue yield.
+    await beforeDispatch?.();
     calls++;
     await d1("UPDATE runtime_jobs SET updated_at = ? WHERE job_id = ?", [now(), job.id]);
     return baseCall(messages, maxTokens);
@@ -355,9 +357,11 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     const response = await call([
       { role: "system", content: index >= 0 ? `Fix Prompt: repair only scene ${index + 1}. Preserve approved details and correct only the grounded findings. ${contract}` : "Repair only the identified story paragraph. Return one prose paragraph without headings. Preserve all facts and approved neighboring content." },
       { role: "user", content: JSON.stringify({ request: prompt, blueprint, story, scenes, target: finding, findings: quality.findings?.filter((f) => f.sceneId === finding.sceneId && (index >= 0 || f.reference === finding.reference)), instruction: "Do not rewrite unaffected sections. Neighboring scenes are approved context; preserve their boundaries." }) },
-    ], STORY_LIMITS.maxSceneTokens);
+    ], STORY_LIMITS.maxSceneTokens, async () => {
+      quality.repairs[target] = attempts + 1;
+      await checkpoint();
+    });
     if (!response.ok || !response.text.trim()) return fail(userId, jobId, "Targeted story repair failed; original drafts retained.");
-    quality.repairs[target] = attempts + 1;
     let revised = "";
     let structural: string[] = [];
     try {

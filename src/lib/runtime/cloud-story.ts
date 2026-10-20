@@ -3,6 +3,7 @@
 import { requestedStoryFields, storyDialogueRange, spokenStoryWords, requiresFixedStoryBackground, wantsStoryProse } from "../ai/story-output";
 import { validateRuntimeStory } from "./story-validation";
 import { SLOT_LIMITS } from "../sandbox/slots";
+import { storySceneCount } from "./story-count";
 
 export const STORY_LIMITS = {
   defaultScenes: 5,
@@ -14,10 +15,7 @@ export const STORY_LIMITS = {
 
 /** Extracts the requested scene/prompt count; defaults to 5, capped at 25. */
 export function parseSceneCount(prompt: string): number {
-  const m = /(\d{1,2})\s*[- ]?(?:scenes?|prompts?|chapters?|episodes?|parts?)\b/i.exec(prompt);
-  const n = m ? Number(m[1]) : STORY_LIMITS.defaultScenes;
-  if (!Number.isInteger(n) || n < 1) return STORY_LIMITS.defaultScenes;
-  return Math.min(n, STORY_LIMITS.maxScenes);
+  return storySceneCount(prompt);
 }
 
 const FIELD_HEADINGS: Record<string, string> = {

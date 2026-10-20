@@ -1,4 +1,5 @@
 import { requestedStoryFields, storyDialogueRange, spokenStoryWords } from "../ai/story-output";
+import { storySceneCount } from "./story-count";
 
 /** Validate the delivered artifact, not the runner's self-reported score. */
 export function validateRuntimeStory(text: string, prompt: string, options: { sceneOnly?: boolean } = {}): string[] {
@@ -6,9 +7,9 @@ export function validateRuntimeStory(text: string, prompt: string, options: { sc
   const bounds = storyDialogueRange(prompt);
   const body = text.replace(/^`{3,}markdown\s*$/gm, "").replace(/^`{3,}\s*$/gm, "");
   const matches = Array.from(body.matchAll(/^\s*#{0,3}\s*Scene\s+(\d+)\b[^\n]*\n/gim));
-  const rawCount = /(\d{1,2})\s*[- ]?(?:scenes?|prompts?|chapters?|episodes?|parts?)\b/i.exec(prompt)?.[1];
-  const expected = Math.min(25, Math.max(1, Number(rawCount) || 5));
+  const expected = storySceneCount(prompt);
   const issues: string[] = [];
+  if (options.sceneOnly && matches.length !== 1) issues.push("A scene candidate must contain exactly one scene heading.");
   const preamble = body.slice(0, matches[0]?.index ?? body.length);
   if (/^\s*(?:#{1,6}\s*)?[*_]*(?:visual prompt|dialogue)[*_]*\s*(?::|$)/im.test(preamble))
     issues.push("Scene components were repeated outside the numbered scenes.");
