@@ -1,5 +1,12 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
+## Current request — Reliable persistent memory
+- [ ] Extend deterministic natural-language commands and contextual clarification; sensitive-data filtering and explicit priority.
+- [ ] Harden permanent D1 lifecycle with additive metadata, atomic deduplication, concurrency guards, and privacy controls; preserve chats and sandbox.
+- [ ] Integrate commands and bounded retrieval in existing chat/Settings without changing providers or generation.
+- [ ] Run new memory tests and complete suite; verify authenticated flow when a usable session exists.
+- [ ] Report implementation, migration, test evidence and remaining limits; do not deploy with unresolved risks.
+
 ## Current request — AI response upgrade
 - [x] Fix internal-story delivery leakage and reject bold/inline leaked or repeated scene components; saved history untouched.
 - [x] Shared reading styles for normal replies, Markdown copy blocks and expanded view; desktop/mobile screenshots inspected.
