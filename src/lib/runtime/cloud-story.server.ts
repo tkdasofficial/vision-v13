@@ -17,6 +17,7 @@ import { SLOT_LIMITS } from "../sandbox/slots";
 import { openStoryWorkspace } from "../sandbox/story-workspace.server";
 import { storyDialogueRange, requiresFixedStoryBackground } from "../ai/story-output";
 import { normalizeScene, parseSceneCount, sceneContract, sceneHeadings, scoreScene, assembleStoryDocument, validateAssembled, storyInstructions, checkStory, STORY_LIMITS } from "./cloud-story";
+import { blueprintInstructions, qualityReviewInstructions, parseQualityReview, replaceStoryParagraph, readQualityCheckpoint, QUALITY_LIMITS } from "./story-quality";
 
 const now = () => new Date().toISOString();
 
@@ -154,11 +155,12 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     if (!(await slots.claimFixedSlot(userId, jobId, 3))) throw new StoryWait();
     await setStage(job, "planning");
     const r = await generateIntoSlot(userId, jobId, 3, "blueprint", [
-      { role: "system", content: "Create a master blueprint for the requested story: setting, characters (names, appearance, clothing), rules and constraints. Concise and structured; no prose story." },
+      { role: "system", content: blueprintInstructions(count) },
       { role: "user", content: prompt },
     ], STORY_LIMITS.maxBlueprintTokens, call);
     if (!r.ok) return fail(userId, jobId, `Blueprint generation failed: ${r.error}`);
-    blueprintRef = r.recordId!; blueprint = r.content!;
+    if (!r.recordId || !r.content) return fail(userId, jobId, "Blueprint record is missing.");
+    blueprintRef = r.recordId; blueprint = r.content;
     await slots.setSlotStatus(userId, jobId, 3, "validated", { result_ref: blueprintRef });
     await w.blueprint(blueprint);
   }
@@ -194,17 +196,18 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     if (!r.ok) return fail(userId, jobId, `Story generation failed: ${r.error}`);
     await slots.saveSlotProgress(userId, jobId, 2, JSON.stringify({ ref: r.recordId, round }));
     await setStage(job, "validating_story");
-    const storyIssues = checkStory(r.content!);
+    const storyIssues = checkStory(r.content ?? "");
     if (storyIssues.length) {
       if (round >= 1) return fail(userId, jobId, `The story did not meet its format after one regeneration: ${storyIssues.join(" ")}`);
       r = await ask(storyIssues);
       if (!r.ok) return fail(userId, jobId, `Story generation failed: ${r.error}`);
       await slots.saveSlotProgress(userId, jobId, 2, JSON.stringify({ ref: r.recordId, round: 1 }));
       await setStage(job, "validating_story");
-      const still = checkStory(r.content!);
+      const still = checkStory(r.content ?? "");
       if (still.length) return fail(userId, jobId, `The story did not meet its format after one regeneration: ${still.join(" ")}`);
     }
-    storyRef = r.recordId!; story = r.content!;
+    if (!r.recordId || !r.content) return fail(userId, jobId, "Story record is missing.");
+    storyRef = r.recordId; story = r.content;
     await slots.setSlotStatus(userId, jobId, 2, "validated", { result_ref: storyRef, blueprint_ref: blueprintRef });
   }
 
@@ -233,7 +236,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     // Every candidate is checkpointed on the slot, so each step can run in its own queue run.
     const sceneMsgs = (extra: string) => [
       { role: "system", content: contract + extra },
-      { role: "user", content: `Blueprint:\n${blueprint}\n\nStory:\n${story}\n\nRequest:\n${prompt}\n\nWrite scene ${i + 1} of ${count}.` },
+      { role: "user", content: `Blueprint and ordered beat assignments:\n${blueprint}\n\nStory:\n${story}\n\nPrevious accepted scene (actual state boundary):\n${scenes.at(-1) ?? "Initial blueprint state"}\n\nRequest:\n${prompt}\n\nWrite scene ${i + 1} of ${count}. Cover only its assigned beat; do not repeat another scene or anticipate later events.` },
     ];
     const prog = parseProgress(current.status === "generating" ? current.findings : null);
     let content = "";
@@ -248,7 +251,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       const gen = await generateIntoSlot(userId, jobId, slotId, "prompt", sceneMsgs(""), STORY_LIMITS.maxSceneTokens, call);
       await w.attempt(4 + i, "generation", t0, gen.ok, gen.ok ? undefined : String(gen.error ?? "failed"));
       if (!gen.ok) { failedScenes++; await w.slotDone(i, false); continue; }
-      content = normalizeScene(gen.content!, i);
+      content = normalizeScene(gen.content ?? "", i);
       await slots.saveSlotProgress(userId, jobId, slotId, JSON.stringify({ ref: gen.recordId, round: 0 }));
       fresh = true;
     }
@@ -263,7 +266,7 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       await w.attempt(4 + i, "retry", t0, gen.ok, gen.ok ? undefined : String(gen.error ?? "failed"));
       if (!gen.ok) { failedScenes++; await w.slotDone(i, false); continue; }
       round = 1;
-      const candidate = normalizeScene(gen.content!, i);
+      const candidate = normalizeScene(gen.content ?? "", i);
       await setStage(job, `validating_scene_${i + 1}`);
       const rescored = scoreScene(candidate, i, prompt);
       await w.validated(i, candidate, rescored.issues, "retry");
@@ -277,8 +280,8 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
       await setStage(job, `correcting_scene_${i + 1}`);
       const t0 = Date.now();
       const fix = await call([
-        { role: "system", content: "Fix Prompt: repair the scene so it satisfies every pointed finding. Return only the corrected scene, keeping the required headings and staying consistent with the blueprint." },
-        { role: "user", content: `Blueprint:\n${blueprint}\n\nPointed fixes required: ${issues.join(" ")}\n\nWrong prompt:\n${content}` },
+        { role: "system", content: "Fix Prompt: repair only the affected scene, preserving valid details. " + contract },
+        { role: "user", content: `Request:\n${prompt}\n\nBlueprint:\n${blueprint}\n\nStory:\n${story}\n\nPrevious accepted scene:\n${scenes.at(-1) ?? "Initial state"}\n\nWrite scene ${i + 1} of ${count}. Pointed fixes required: ${issues.join(" ")}\n\nWrong prompt:\n${content}` },
       ], STORY_LIMITS.maxSceneTokens);
       await w.attempt(4 + i, "repair", t0, fix.ok && !!fix.text.trim(), fix.ok ? (fix.text.trim() ? undefined : "empty") : `provider_${fix.status}`);
       if (!fix.ok || !fix.text.trim()) break;
@@ -305,7 +308,73 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
     }
   }
 
-  if (failedScenes === count) return fail(userId, jobId, "Every scene failed generation or repair.");
+  if (failedScenes || scenes.length !== count) return fail(userId, jobId, `${failedScenes} scene(s) failed generation or repair; saved drafts retained, incomplete output was not delivered.`);
+
+  // Reuse Deep's semantic review contract, not another generation pipeline. Slot 1's
+  // optional result JSON holds candidate-bound reviews/overrides across queue yields.
+  const originalSlot = (await slots.listSlots(userId, jobId)).find((s) => s.slot_id === 1);
+  const quality = readQualityCheckpoint(originalSlot?.result);
+  for (const [target, ref] of Object.entries(quality.refs)) {
+    const saved = await slots.readRecord(userId, ref);
+    if (!saved) return fail(userId, jobId, "A saved story repair is unavailable; drafts retained.");
+    if (target === "story") story = saved.content;
+    else {
+      const match = /^scene:(\d+)$/.exec(target);
+      if (!match || Number(match[1]) > scenes.length) return fail(userId, jobId, "Invalid saved repair target.");
+      scenes[Number(match[1]) - 1] = saved.content;
+    }
+  }
+  const checkpoint = () => slots.saveStoryQuality(userId, jobId, JSON.stringify(quality));
+  while (true) {
+    if (await cancelRequested(jobId)) return;
+    const hash = await sha256Hex(new TextEncoder().encode(JSON.stringify({ prompt, blueprint, story, scenes })));
+    if (quality.hash !== hash || !quality.findings) {
+      await setStage(job, "reviewing_story");
+      const response = await call([
+        { role: "system", content: qualityReviewInstructions },
+        { role: "user", content: JSON.stringify({ request: prompt, blueprint, storyParagraphs: story.split(/\n\s*\n/).map((text, i) => ({ reference: `paragraph:${i + 1}`, text })), scenes: scenes.map((text, i) => ({ sceneId: `scene:${i + 1}`, text })), task: "Audit all scenes, narrative agreement and dependent boundaries; identify only grounded failures." }) },
+      ], STORY_LIMITS.maxSceneTokens);
+      if (!response.ok || !response.text.trim()) return fail(userId, jobId, "Story semantic review unavailable; saved drafts retained and not falsely approved.");
+      try { quality.findings = parseQualityReview(response.text, story, scenes); }
+      catch (error) { return fail(userId, jobId, safeError(error)); }
+      quality.hash = hash;
+      quality.passed = !quality.findings.some((f) => f.severity === "critical");
+      await checkpoint();
+    }
+    const finding = quality.findings?.find((f) => f.severity === "critical");
+    if (!finding) break;
+    const target = finding.sceneId === "story" ? finding.reference : finding.sceneId;
+    const attempts = quality.repairs[target] ?? 0;
+    if (attempts >= QUALITY_LIMITS.perSection || Object.values(quality.repairs).reduce((a, b) => a + b, 0) >= QUALITY_LIMITS.maxRepairs) {
+      await w.finalValidation(quality.findings?.filter((f) => f.severity === "critical").map((f) => `${f.sceneId} ${f.category}: ${f.correction}`) ?? []);
+      return fail(userId, jobId, `Unresolved ${finding.sceneId} ${finding.category}: ${finding.correction}. Drafts retained; repair limit reached.`);
+    }
+    const match = /^scene:(\d+)$/.exec(finding.sceneId);
+    const index = match ? Number(match[1]) - 1 : -1;
+    await setStage(job, index >= 0 ? `correcting_scene_${index + 1}` : "repairing_story");
+    const response = await call([
+      { role: "system", content: index >= 0 ? `Fix Prompt: repair only scene ${index + 1}. Preserve approved details and correct only the grounded findings. ${contract}` : "Repair only the identified story paragraph. Return one prose paragraph without headings. Preserve all facts and approved neighboring content." },
+      { role: "user", content: JSON.stringify({ request: prompt, blueprint, story, scenes, target: finding, findings: quality.findings?.filter((f) => f.sceneId === finding.sceneId && (index >= 0 || f.reference === finding.reference)), instruction: "Do not rewrite unaffected sections. Neighboring scenes are approved context; preserve their boundaries." }) },
+    ], STORY_LIMITS.maxSceneTokens);
+    if (!response.ok || !response.text.trim()) return fail(userId, jobId, "Targeted story repair failed; original drafts retained.");
+    quality.repairs[target] = attempts + 1;
+    let revised = "";
+    let structural: string[] = [];
+    try {
+      revised = index >= 0 ? normalizeScene(response.text, index) : replaceStoryParagraph(story, finding.reference, response.text);
+      structural = index >= 0 ? scoreScene(revised, index, prompt).issues : checkStory(revised);
+    } catch (error) { structural = [safeError(error)]; }
+    if (!structural.length) {
+      const key = index >= 0 ? finding.sceneId : "story";
+      const ref = await slots.saveRecord(userId, jobId, index >= 0 ? claimedIds[index] : 2, index >= 0 ? "prompt" : "story", revised);
+      quality.refs[key] = ref;
+      if (index >= 0) scenes[index] = revised; else story = revised;
+      quality.hash = undefined; quality.findings = undefined; quality.passed = false;
+    }
+    // A structurally bad rewrite never replaces a recoverable original. The attempt
+    // is still durable; next run repairs again within the same bound.
+    await checkpoint();
+  }
 
   // Assemble in order and run the whole-document contract check before delivery.
   await setStage(job, "assembling");
@@ -325,6 +394,6 @@ async function runSteps(job: JobRun, prompt: string, call: Call): Promise<void> 
   const hash = await sha256Hex(bytes);
   await d1(
     "UPDATE runtime_jobs SET status = 'uploaded', output_key = ?, output_chunks = ?, output_size = ?, output_sha256 = ?, output_name = ?, result = ?, updated_at = ? WHERE job_id = ? AND status = 'running'",
-    [stored.key, stored.chunks, bytes.length, hash, "story.md", JSON.stringify({ scenes: count, failedScenes, engine: "cloudflare-slots" }), now(), jobId],
+    [stored.key, stored.chunks, bytes.length, hash, "story.md", JSON.stringify({ scenes: count, failedScenes, engine: "cloudflare-slots", quality: { version: 1, hash: quality.hash, passed: quality.passed, checks: "all scenes and narrative", repairs: quality.repairs, findings: quality.findings } }), now(), jobId],
   );
 }
