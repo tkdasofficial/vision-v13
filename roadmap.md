@@ -1,10 +1,11 @@
 # Roadmap — Memory, Output Control, Artifacts & Activity Tracking
 
 ## Current request — Story generation quality
-- [ ] Trace existing flow and run unchanged baseline tests/workflow.
-- [ ] Strengthen character/visual/causal context and existing structured validation; add bounded checkpointed local repairs.
-- [ ] Test five-scene continuity, capability/prop/dialogue contradictions, duplication, repair failure/recovery and delivery regressions.
-- [ ] Report actual before/after evidence, latency bounds and limitations; no automatic deployment.
+- [x] Trace existing request→queue→slots→validation→artifact→chat→cleanup flow; unchanged full baseline 1,724 passed/one skipped and eight-file workflow baseline 86 passed/one skipped (injected models, not live AI).
+- [x] Structured new character/visual/causal blueprints, shared Deep semantic review contract, evidence-linked scene/paragraph repair overlays and hashes in existing slot metadata; original accepted records/providers/schema/finalizer remain unchanged.
+- [x] Full final regression: 119 files, 1,745 passed/one skipped; automatic build OK. Five-scene targeted repair, persistent failure, interrupted-call attempt reservation, stale-review rejection, local duplicate paragraph repair, ordering and existing authentication/streaming/recovery/cleanup tests pass.
+- [x] Actual evidence/call counts and limitations documented in docs/story-quality-review-2026-10-20.md. Clean five-scene mock uses 8 logical calls versus 7 baseline; no live speed/quality claim or deployment.
+- [ ] Live same-account before/after quality/latency, originating-chat reload and cleanup acceptance — blocked by no current first-party account session and no deployment authorization; preview APIs execute the older deployed backend. Structured plans/model reviews remain fallible and no complete acceptance claim is made.
 
 ## Current request — Truthful task statuses
 - [x] Generic running/processing, calculation, indexing and Deep work no longer show Executing; only explicit executing_code retains it. The manual terminal alias is checksum-only, not shell execution, so is not falsely labeled Executing.

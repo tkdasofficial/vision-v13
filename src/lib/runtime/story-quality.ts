@@ -25,7 +25,7 @@ export function parseQualityReview(raw: string, story: string, scenes: string[])
     const index = /^scene:(\d+)$/.exec(finding.sceneId);
     const paragraph = /^paragraph:(\d+)$/.exec(finding.reference);
     const source = index ? scenes[Number(index[1]) - 1] : finding.sceneId === "story" && paragraph ? story.split(/\n\s*\n/)[Number(paragraph[1]) - 1] : undefined;
-    if (!source || !source.includes(finding.evidence) || !finding.correction.trim()) throw new Error("Story review has an unsupported target or ungrounded finding; saved drafts retained.");
+    if (!source || !finding.evidence.trim() || !source.includes(finding.evidence) || !finding.correction.trim()) throw new Error("Story review has an unsupported target or ungrounded finding; saved drafts retained.");
   }
   return findings;
 }
@@ -66,7 +66,8 @@ export function replaceStoryParagraph(story: string, reference: string, replacem
 }
 
 export type QualityCheckpoint = { version: 1; hash?: string; passed?: boolean; findings?: StoryIssue[]; repairs: Record<string, number>; refs: Record<string, string> };
+const checkpointSchema = z.object({ version: z.literal(1), hash: z.string().regex(/^[a-f0-9]{64}$/).optional(), passed: z.boolean().optional(), findings: reviewSchema.shape.issues.optional(), repairs: z.record(z.number().int().min(0)), refs: z.record(z.string().min(1)) });
 export function readQualityCheckpoint(raw: string | null | undefined): QualityCheckpoint {
-  if (raw) { try { const value = JSON.parse(raw); if (value.version === 1 && value.repairs && value.refs) return value; } catch { /* Legacy slot metadata is not an approved audit. */ } }
+  if (raw) { try { return checkpointSchema.parse(JSON.parse(raw)); } catch { /* Legacy/malformed slot metadata is not an approved audit. */ } }
   return { version: 1, repairs: {}, refs: {} };
 }
