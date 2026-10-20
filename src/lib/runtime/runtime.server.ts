@@ -5,6 +5,7 @@ import { JobRun, ARTIFACT_TTL_MS, safeError } from "@/lib/jobs/jobs.server";
 import { RUNTIME_OPS, RUNTIME_LIMITS, cleanParams, outputMatches, outputName, TARGET_MIME, type RuntimeOpId } from "./operations";
 import { wantsStoryFile } from "@/lib/ai/story-output";
 import { validateRuntimeStory } from "./story-validation";
+import { runtimeStageStep } from "./progress";
 
 const now = () => new Date().toISOString();
 
@@ -115,7 +116,7 @@ export async function runQueuedStoryJob(jobId: string): Promise<"done" | "yield"
     const won = await d1("UPDATE runtime_jobs SET status = 'running', dispatched_at = ?, updated_at = ? WHERE job_id = ? AND status = 'queued' RETURNING job_id", [now(), now(), jobId]);
     if (!won.length) return "skipped";
     const job = JobRun.restore(jobRow);
-    await job.step("running", "Planning the story blueprint");
+    await job.step("setting_up", "Opening the story workspace");
   } else if (rt.status !== "running") {
     return "skipped";
   }
@@ -137,7 +138,7 @@ export async function runQueuedStoryJob(jobId: string): Promise<"done" | "yield"
     const { getStoryQueue } = await import("@/lib/ai/runtime-env.server");
     const queue = getStoryQueue();
     // Waiting for another story to free the shared slots: check again shortly (the job deadline still applies).
-    if (outcome === "wait") await job.step("queued", "Waiting for another story to finish");
+    await job.step("queued", outcome === "wait" ? "Waiting for another story to finish" : "Waiting for the next story worker run");
     if (queue) { await queue.send({ jobId }, outcome === "wait" ? { delaySeconds: STORY_WAIT_SECONDS } : undefined); return "yield"; }
     if (outcome === "wait") return "yield";
     return runQueuedStoryJob(jobId);
@@ -154,24 +155,6 @@ export async function runQueuedStoryJob(jobId: string): Promise<"done" | "yield"
     await releaseStorySlots(rt.user_id, jobId);
   }
   return "done";
-}
-
-const STAGE_STEP: Record<string, ["running" | "validating" | "processing" | "verifying" | "uploading", string]> = {
-  claimed: ["running", "Runner started"],
-  validating_input: ["validating", "Checking the file on the runner"],
-  processing: ["processing", "Processing the file"],
-  validating_output: ["verifying", "Validating the output"],
-  uploading_output: ["uploading", "Preparing the download"],
-  planning: ["processing", "Planning the story blueprint"],
-  assembling: ["processing", "Assembling the final document"],
-};
-
-/** Maps a runner stage to a user-facing step; story stages carry their scene number. */
-function stageStep(stage: string): ["running" | "validating" | "processing" | "verifying" | "uploading", string] | null {
-  if (STAGE_STEP[stage]) return STAGE_STEP[stage];
-  const m = stage.match(/^writing_scene_(\d{1,2})$/);
-  if (m) return ["processing", `Writing scene ${Number(m[1])}`];
-  return null;
 }
 
 /** Brings a runtime job's VISION record up to date. Safe to call on every poll; terminal work happens once. */
@@ -215,12 +198,12 @@ export async function syncRuntimeJob(jobRow: any): Promise<boolean> {
     }
   }
 
-  if (rt.status === "running" && rt.stage) {
-    const mapped = stageStep(rt.stage);
+  if (rt.status === "running" && rt.stage && !(isCloudStoryOp(rt.operation) && jobRow.status === "queued")) {
+    const mapped = runtimeStageStep(rt.stage);
     if (mapped) {
       const [status, detail] = mapped;
       const last = job.steps[job.steps.length - 1];
-      if (last?.detail !== detail) { await job.step(status, detail); changed = true; }
+      if (last?.status !== status || last?.detail !== detail) { await job.step(status, detail); changed = true; }
     }
   }
 
