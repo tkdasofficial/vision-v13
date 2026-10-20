@@ -1,0 +1,25 @@
+# Persistent memory upgrade
+
+## Implementation
+- Reuses the existing Cloudflare chat, authenticated caller, permanent D1 memory store, Settings page, and provider chain. No sandbox, generation engine, authentication or provider changes.
+- Pure intent/privacy logic in `memory.ts` and `memory-policy.ts`; one server dispatcher handles confirmed memory commands in Default, Deep, Research and Coding paths before provider calls.
+- Save, recall, correction, targeted forget, clear, off and on commands support common natural variations, limited misspellings and contextual pronouns. Contextual saves use bounded user-provided text, never invented assistant facts. Missing correction targets and tied forget matches require clarification.
+- Auto-formation is conservative: durable first-person preferences/profile/project facts and standing instructions; no quoted/hypothetical/transient facts, credentials or inferred highly private facts. It starts after successful reply persistence and is invalidated by intervening toggle/clear revisions.
+- Retrieval is bounded and relevance-ranked, fenced as untrusted data. Current instructions/security take priority. The saved-memory and history switches remain independent; “Turn memory off” disables both. Same-chat context remains normal conversation context, not cross-chat memory.
+- Settings retains search/edit/delete/clear and shows category, status, source type/date and source-chat links when available. Switch patches are server-confirmed and do not overwrite unrelated settings; failed edits stay open.
+
+## Database changes
+`db/main-migrations/0001_persistent_memory.sql` targets **main vision D1 only**, not vision-sandbox. Adds category, source reference, nullable canonical key and active status; owner+canonical-key uniqueness; owner-scoped revision/history cutoff state and deletion/preference triggers. Existing rows are preserved, with no destructive backfill. The guarded existing schema initializer supplies compatible additive upgrades, checking columns and surfacing errors rather than swallowing arbitrary migration failures. Migration must be applied only once to existing schema; runtime initializer is idempotent.
+
+New saves use a canonical subject/content key. Exact retries are no-ops; sequential corrections replace their subject; competing updates use content comparison and privacy revision guards rather than silently overwriting. Automatic extraction never overwrites an explicit fact. Settings edits remain available while recall is disabled and use a content comparison to avoid overwriting concurrent changes.
+
+Deletion removes actual rows and index entries. Chats are never deleted. To avoid retrieving forgotten facts from preserved chats, a conservative per-user time cutoff excludes **all earlier cross-chat messages**, personal and project, not just that fact; new messages remain eligible. This trade-off intentionally favors privacy over historical recall. The cutoff is not a separate store of deleted content.
+
+## Validation and remaining limits
+- Tests cover trigger variants, ambiguity, cross-conversation dispatcher recall, real SQLite constraints/migration preservation, auto-formation, duplicates/conflicts, pending-write toggle/clear races, disabled behavior, consent, owner isolation and authenticated API authorization failures. Existing provider/streaming/story tests remain intact.
+- Initial complete suite: 1,681 passed, one existing optional fixture test skipped; subsequent final rerun recorded in roadmap.
+- Browser: `/settings/memory` redirected to login without a session; `/api/memories` returned 401. No usable signed-in session exists; **real authenticated UI-to-Cloudflare command/readback remains unverified**.
+- No deployment or live migration was performed. The preview proxies API requests to the previously deployed Cloudflare version, so it does not exercise the new server implementation yet.
+- This is not a claim of exact ChatGPT parity. Natural language is bounded deterministic grammar, not unrestricted semantic interpretation; automatic extraction is conservative, not a separate AI call. Existing legacy duplicate rows are preserved, and explicit recall may show legacy duplicates until edited. There is no embeddings index or imported chat backfill.
+- A request already generating with recalled context cannot revoke provider input after a later toggle; controls govern subsequent retrieval and block pending writes. Highly private direct saves require the user's explicit “Remember that…” instruction; vague contextual private saves ask for that confirmation; credentials are rejected.
+- End-to-end acceptance needs approved deployment plus a fresh authorized account session, then save → new-chat recall → update → forget → off/on → Settings readback. Do not declare acceptance complete before that check.

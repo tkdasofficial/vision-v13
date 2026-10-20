@@ -37,8 +37,11 @@ export async function loadProjectMemory(userId: string, projectId: string, chatI
      ORDER BY m.created_at DESC LIMIT 120`,
     [userId, projectId, chatId],
   ).catch(() => []);
+  if (!rows.length) return "";
   const norm = rows.map((r) => ({ ...r, role: String(r.role), createdAt: String(r.createdAt ?? ""), content: String(r.content ?? ""), title: String(r.title ?? "") }));
-  return projectRowsBlock(rankProjectRows(norm, projectId, chatId, text));
+  let cutoff = 0;
+  try { await ensureMem(); const state = await d1("SELECT history_blocked FROM user_memory_state WHERE user_id = ?", [userId]); cutoff = Number(state[0]?.history_blocked ?? 0); } catch { return ""; }
+  return projectRowsBlock(rankProjectRows(norm.filter((r) => !cutoff || Date.parse(r.createdAt) > cutoff), projectId, chatId, text));
 }
 
 // ---- Permanent memory (user-level, explicit saves only). Fails soft: memory never breaks chat. ----
@@ -56,7 +59,7 @@ export const ensureMem = () => (memReady ??= (async () => {
   await d1("CREATE INDEX IF NOT EXISTS idx_user_memories_user ON user_memories(user_id, created_at)");
   await d1("CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_canonical ON user_memories(user_id, canonical_key)");
   await d1("CREATE TABLE IF NOT EXISTS user_memory_state (user_id TEXT PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0, history_blocked INTEGER NOT NULL DEFAULT 0)");
-  await d1("CREATE TRIGGER IF NOT EXISTS memory_delete_privacy AFTER DELETE ON user_memories BEGIN INSERT INTO user_memory_state(user_id, revision, history_blocked) VALUES (OLD.user_id, 1, 1) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = 1; END");
+  await d1("CREATE TRIGGER IF NOT EXISTS memory_delete_privacy AFTER DELETE ON user_memories BEGIN INSERT INTO user_memory_state(user_id, revision, history_blocked) VALUES (OLD.user_id, 1, CAST(strftime('%s','now') AS INTEGER)*1000) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = excluded.history_blocked; END");
   await d1("CREATE TRIGGER IF NOT EXISTS memory_prefs_revision AFTER UPDATE OF prefs ON user_settings BEGIN INSERT INTO user_memory_state(user_id, revision) VALUES (NEW.user_id, 1) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1; END");
 })().catch((e) => { memReady = null; throw e; }));
 
@@ -67,13 +70,18 @@ async function canonicalKey(content: string): Promise<string> {
 }
 
 /** Patch only the memory switches; unrelated settings survive concurrent changes. */
-export async function setMemoryEnabled(userId: string, enabled: boolean): Promise<boolean> {
+export async function setMemorySwitches(userId: string, patch: { savedMemories?: boolean; chatHistory?: boolean }): Promise<boolean> {
   try {
     await ensureMem();
-    const rows = await d1("UPDATE user_settings SET prefs = json_set(CASE WHEN json_valid(prefs) THEN prefs ELSE '{}' END, '$.savedMemories', json(?), '$.chatHistory', json(?)), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE user_id = ? RETURNING id", [JSON.stringify(enabled), JSON.stringify(enabled), userId]);
+    const rows = await d1("UPDATE user_settings SET prefs = json_patch(CASE WHEN json_valid(prefs) THEN prefs ELSE '{}' END, ?), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE user_id = ? RETURNING id", [JSON.stringify(patch), userId]);
     if (rows.length) return true;
-    return (await d1("INSERT INTO user_settings (id, user_id, prefs) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE user_id = ?) RETURNING id", [crypto.randomUUID(), userId, JSON.stringify({ savedMemories: enabled, chatHistory: enabled }), userId])).length > 0;
+    return (await d1("INSERT INTO user_settings (id, user_id, prefs) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE user_id = ?) RETURNING id", [crypto.randomUUID(), userId, JSON.stringify(patch), userId])).length > 0;
   } catch { return false; }
+}
+export const setMemoryEnabled = (userId: string, enabled: boolean) => setMemorySwitches(userId, { savedMemories: enabled, chatHistory: enabled });
+
+export async function memoryRevision(userId: string): Promise<number | null> {
+  try { await ensureMem(); const rows = await d1("SELECT revision FROM user_memory_state WHERE user_id = ?", [userId]); return Number(rows[0]?.revision ?? 0); } catch { return null; }
 }
 
 /** Like loadPermanentMemories but null on failure, so callers can tell "none stored" from "couldn't read". */
@@ -97,13 +105,16 @@ export type SaveResult = { memory: PermanentMemory; plan: WritePlan } | null;
  * Saves a fact for this user only. Duplicate → no-op, same subject → replaced (latest wins),
  * else inserted. Returns null on any failure so callers never claim a save that didn't happen.
  */
-export async function savePermanentMemory(userId: string, content: string, source: "explicit" | "auto" = "explicit", sourceRef?: string): Promise<SaveResult> {
+export async function savePermanentMemory(userId: string, content: string, source: "explicit" | "auto" = "explicit", sourceRef?: string, expectedRevision?: number): Promise<SaveResult> {
   const trimmed = content.trim();
   if (trimmed.length < 2 || trimmed.length > 500 || memoryPrivacy(trimmed) === "secret" || (source === "auto" && memoryPrivacy(trimmed) !== "safe")) return null;
   try {
     await ensureMem();
+    const enabled = (await d1("SELECT COALESCE((SELECT json_extract(CASE WHEN json_valid(prefs) THEN prefs ELSE '{}' END, '$.savedMemories') FROM user_settings WHERE user_id = ? LIMIT 1),1) AS enabled", [userId]))[0]?.enabled;
+    if (enabled === 0) return null;
     const state = (await d1("SELECT revision FROM user_memory_state WHERE user_id = ?", [userId]))[0];
     const revision = Number(state?.revision ?? 0);
+    if (expectedRevision !== undefined && expectedRevision !== revision) return null;
     const existing = await loadPermanentMemoriesStrict(userId);
     const plan = planMemoryWrite(existing, trimmed);
     const now = Date.now();
@@ -143,7 +154,7 @@ export async function deletePermanentMemories(userId: string, ids: string[] | "a
   try {
     await ensureMem();
     if (ids === "all") {
-      await d1("INSERT INTO user_memory_state (user_id, revision, history_blocked) VALUES (?, 1, 1) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = 1", [userId]);
+      await d1("INSERT INTO user_memory_state (user_id, revision, history_blocked) VALUES (?, 1, CAST(strftime('%s','now') AS INTEGER)*1000) ON CONFLICT(user_id) DO UPDATE SET revision = revision + 1, history_blocked = excluded.history_blocked", [userId]);
       return (await d1("DELETE FROM user_memories WHERE user_id = ? RETURNING id", [userId])).length;
     }
     if (!ids.length) return 0;
@@ -179,7 +190,9 @@ export async function editMemory(userId: string, id: string, content: string): P
   if (t.length < 2 || t.length > 500 || memoryPrivacy(t) === "secret") return false;
   try {
     await ensureMem();
-    return (await d1("UPDATE user_memories SET content = ?, updated_at = ?, source = 'explicit', category = ?, canonical_key = ? WHERE id = ? AND user_id = ? RETURNING id", [t, Date.now(), memoryCategory(t), await canonicalKey(t), id, userId])).length > 0;
+    const previous = (await loadPermanentMemoriesStrict(userId)).find((m) => m.id === id);
+    if (!previous) return false;
+    return (await d1("UPDATE user_memories SET content = ?, updated_at = ?, source = 'explicit', category = ?, canonical_key = ? WHERE content = ? AND id = ? AND user_id = ? RETURNING id", [t, Date.now(), memoryCategory(t), await canonicalKey(t), previous.content, id, userId])).length > 0;
   } catch { return false; }
 }
 
@@ -187,7 +200,8 @@ export async function editMemory(userId: string, id: string, content: string): P
 export async function loadPastChatsMemory(userId: string, chatId: string | undefined, text: string): Promise<string> {
   if (!text.trim()) return "";
   // Deletion preserves conversations, but never mines them to resurrect forgotten facts.
-  try { await ensureMem(); const state = await d1("SELECT history_blocked FROM user_memory_state WHERE user_id = ?", [userId]); if (state[0]?.history_blocked) return ""; } catch { return ""; }
+  let cutoff = 0;
+  try { await ensureMem(); const state = await d1("SELECT history_blocked FROM user_memory_state WHERE user_id = ?", [userId]); cutoff = Number(state[0]?.history_blocked ?? 0); } catch { return ""; }
   const { rankPastChats, pastChatsBlock } = await import("./memory");
   const rows: any[] = await d1(
     `SELECT s.id AS chatId, s.title AS title, m.role AS role, m.content AS content, m.created_at AS createdAt
@@ -197,5 +211,5 @@ export async function loadPastChatsMemory(userId: string, chatId: string | undef
     [userId, chatId ?? ""],
   ).catch(() => []);
   const norm = rows.map((r) => ({ chatId: String(r.chatId), title: String(r.title ?? ""), role: String(r.role), content: String(r.content ?? ""), createdAt: String(r.createdAt ?? "") }));
-  return pastChatsBlock(rankPastChats(norm, chatId ?? "", text));
+  return pastChatsBlock(rankPastChats(norm.filter((r) => !cutoff || Date.parse(r.createdAt) > cutoff), chatId ?? "", text));
 }

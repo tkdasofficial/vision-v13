@@ -29,7 +29,7 @@ export const Route = createFileRoute("/api/chat")({
         const { prepareKeepAlive, saveReply } = await import("@/lib/jobs/chat-background.server");
         const keepAlive = await prepareKeepAlive();
         const body: any = await request.json().catch(() => null);
-        const chatId = typeof body?.conversationId === "string" ? body.conversationId.slice(0, 64) : undefined;
+        const chatId = body?.incognito === true ? undefined : typeof body?.conversationId === "string" ? body.conversationId.slice(0, 64) : undefined;
         const { loadConversationHistory } = await import("@/lib/ai/memory.server");
         const { restoreConversationHistory } = await import("@/lib/ai/conversation-history");
         const incoming = Array.isArray(body?.messages) ? body.messages.slice(-200) : [];
@@ -80,68 +80,32 @@ export const Route = createFileRoute("/api/chat")({
         // "Saving Memory", "Updating Memory", "Deleting Memory") show only while the real
         // database operation is in progress. Exactly one pipeline (deep or default) runs it.
         let memoryRan = false;
+        let memoryReply: string | null = null;
+        let memoryAuto: (() => Promise<unknown>) | null = null;
         const applyMemory = async (emitMem?: (stage: import("@/lib/ai/task-events").TaskStage, msg?: string) => void) => {
           if (memoryRan) return;
           memoryRan = true;
-          // Project memory: every project chat sees relevant requests/outputs from its OTHER chats in the
-          // same project (owner + project checked in SQL). Never crosses projects.
-          if (chatCtx.projectId && chatId) {
+          const { handleChatMemory } = await import("@/lib/ai/memory-handler.server");
+          const history = raw.slice(0, -1).filter((m: any) => typeof m.content === "string").map((m: any) => ({ role: m.role, content: m.content }));
+          const result = await handleChatMemory({ userId: caller.user.id, chatId, owned: chatCtx.owned && body?.incognito !== true, scope: chatCtx.scope, text: lastText, history, emit: emitMem });
+          memoryReply = result.reply;
+          memoryAuto = result.auto;
+          if (result.block) system += `\n\n${result.block}`;
+          // Recheck authoritative switches after commands, before all cross-chat retrieval.
+          const fresh = parsePrefs((await loadChatContext(caller.user.id, chatId)).prefsRaw);
+          if (memoryReply || body?.incognito === true) return;
+          if (chatCtx.projectId && chatId && fresh.chatHistory) {
             emitMem?.("remembering");
             const pm = await loadProjectMemory(caller.user.id, chatCtx.projectId, chatId, lastText);
             if (pm) system += `\n\n${pm}`;
           }
-          const { memorySwitches } = await import("@/lib/ai/memory");
-          const sw = memorySwitches(prefs);
-          // Reference chat history: relevant snippets from the user's other non-project chats.
-          if (sw.history && includesPersonal(chatCtx.scope) && !chatCtx.projectId && chatCtx.owned) {
+          if (fresh.chatHistory && includesPersonal(chatCtx.scope) && !chatCtx.projectId && chatCtx.owned) {
             const { loadPastChatsMemory } = await import("@/lib/ai/memory.server");
             const past = await loadPastChatsMemory(caller.user.id, chatId, lastText);
             if (past) system += `\n\n${past}`;
           }
-          if (!sw.saved && includesPersonal(chatCtx.scope)) system += "\n\nSaved memory is turned off by the user in Settings → Memory. Do not claim to save, update or recall memories; if asked, say memory is off and can be turned on in Settings → Memory.";
-          // Permanent memory: personal facts. Never injected into "project"-scope chats (no personal leak).
-          // Every save/delete is confirmed to the model only after D1 reports success.
-          if (sw.saved && includesPersonal(chatCtx.scope) && lastText.trim()) {
-            const { detectMemoryCommand, detectAutoMemory, matchForget, relevantMemories, permanentMemoryBlock, memoryOutcomeNote, recallMemoryNote } = await import("@/lib/ai/memory");
-            const { loadPermanentMemories, tryLoadPermanentMemories, savePermanentMemory, deletePermanentMemories } = await import("@/lib/ai/memory.server");
-            const memReq = detectMemoryCommand(lastText);
-            const note = (o: import("@/lib/ai/memory").MemoryOutcome) => { system += `\n\n${memoryOutcomeNote(o)}`; };
-            if (memReq.action === "save") {
-              emitMem?.("saving_memory");
-              const saved = await savePermanentMemory(caller.user.id, memReq.content);
-              note(!saved ? { kind: "save_failed" }
-                : saved.plan.kind === "replace" ? { kind: "updated", previous: saved.plan.previous, content: saved.memory.content }
-                : { kind: "saved", content: saved.memory.content });
-            } else if (memReq.action === "forget_all") {
-              emitMem?.("deleting_memory");
-              const n = await deletePermanentMemories(caller.user.id, "all");
-              note(n === null ? { kind: "forget_all_failed" } : { kind: "forgot_all", count: n });
-            } else if (memReq.action === "forget") {
-              emitMem?.("remembering");
-              const list = await tryLoadPermanentMemories(caller.user.id);
-              const match = list ? matchForget(list, memReq.query) : null;
-              if (!match) note({ kind: "lookup_failed" });
-              else if (match.kind === "one") {
-                emitMem?.("deleting_memory");
-                const n = await deletePermanentMemories(caller.user.id, [match.memory.id]);
-                note(n ? { kind: "forgot", content: match.memory.content } : { kind: "forget_failed", content: match.memory.content });
-              } else if (match.kind === "ambiguous") note({ kind: "forget_ambiguous", candidates: match.candidates.map((m) => m.content) });
-              else note({ kind: "forget_none", query: memReq.query });
-            } else if (memReq.action === "none" && chatCtx.owned && !chatCtx.projectId) {
-              // Auto-capture stable first-person facts silently; project chats and unsaved/incognito chats never auto-save.
-              const fact = detectAutoMemory(lastText);
-              if (fact) await savePermanentMemory(caller.user.id, fact, "auto");
-            }
-            if (memReq.action !== "forget" && memReq.action !== "forget_all") emitMem?.("remembering");
-            const all = memReq.action === "forget" || memReq.action === "forget_all" ? [] : await tryLoadPermanentMemories(caller.user.id);
-            if (memReq.action === "recall") {
-              system += `\n\n${recallMemoryNote(all)}`;
-            } else if (all?.length) {
-              const rel = relevantMemories(all, lastText);
-              if (rel.length) system += `\n\n${permanentMemoryBlock(rel)}`;
-            }
-          }
         };
+        const finishAutoMemory = () => { if (memoryAuto) keepAlive(memoryAuto().catch(() => null)); };
         let contentIntent: import("@/lib/ai/content-intent").IntentResult | null = null;
         // Content intent (copy-ready deliverable / code / data / normal answer) shapes the output format only.
         {
@@ -248,6 +212,12 @@ export const Route = createFileRoute("/api/chat")({
                 progress("thinking");
                 // Memory and search run here, live: their statuses stream while the real operations run.
                 await applyMemory((s) => progress(s));
+                if (memoryReply) {
+                  await saveReply(caller.user.id, chatId, requestId, memoryReply, { executionMode: task.executionMode });
+                  outcome = { status: "completed" };
+                  put(sseChunk(memoryReply));
+                  return;
+                }
                 await runSearch((s, msg) => progress(s === "searching_web" ? "researching" : "reading", msg));
                 baseSystem = system;
                 const fullMessages = [{ role: "system", content: system }, ...messages];
@@ -257,7 +227,7 @@ export const Route = createFileRoute("/api/chat")({
                   const r = await runDeepEngine({ request: lastText, requestId, conversationId, analysis: deepAnalysis, baseSystem, call: call as any, reviewCall: reviewCall as any, store: d1ExecutionStore(caller.user.id), limits: { maxRetries: (await import("@/lib/ai/limits")).AI_LIMITS.outerRetries }, progress, log: (e) => console.log("[chat:deep:engine]", JSON.stringify({ user: caller.user.id, requestId, ...e })) });
                   console.log("[chat:deep]", JSON.stringify({ user: caller.user.id, engine: "tasks", model: usedModel, overall: r.state.overall, final: r.state.finalValidation, calls: r.calls, reused: r.reused, ms: Date.now() - t0 }));
                   if (r.state.overall === "failed" && !r.state.tasks.some((t) => t.output)) { progress("failed", "No result was generated"); put(sseChunk(ALL_PROVIDERS_UNAVAILABLE)); }
-                  else { await saveReply(caller.user.id, chatId, requestId, r.text, { executionMode: task.executionMode }); outcome = { status: "completed" }; for (let i = 0; i < r.text.length; i += 400) put(sseChunk(r.text.slice(i, i + 400))); }
+                  else { await saveReply(caller.user.id, chatId, requestId, r.text, { executionMode: task.executionMode }); finishAutoMemory(); outcome = { status: "completed" }; for (let i = 0; i < r.text.length; i += 400) put(sseChunk(r.text.slice(i, i + 400))); }
                   return;
                 }
                 progress("analyzing");
@@ -274,6 +244,7 @@ export const Route = createFileRoute("/api/chat")({
                 console.log("[chat:deep]", JSON.stringify({ user: caller.user.id, model: usedModel, ok: res.ok, stages: res.stages, corrections: res.ok ? res.corrections : 0, remaining: res.ok ? res.remaining.length : null, ms: Date.now() - t0 }));
                 if (res.ok) {
                   await saveReply(caller.user.id, chatId, requestId, res.text, { executionMode: task.executionMode });
+                  finishAutoMemory();
                   outcome = { status: "completed" };
                   for (let i = 0; i < res.text.length; i += 400) put(sseChunk(res.text.slice(i, i + 400)));
                 } else if (res.status !== 499) {
@@ -342,6 +313,13 @@ export const Route = createFileRoute("/api/chat")({
               if (retrieved) emit("finding", retrieved.slice(0, 120));
               // Memory runs live so Saving/Updating/Deleting Memory and Remembering show only while they happen.
               await applyMemory((s, m) => emit(s, m));
+              if (memoryReply) {
+                emit("finalizing");
+                await saveReply(caller.user.id, chatId, taskId, memoryReply, { executionMode: task.executionMode });
+                outcome = { status: "completed" };
+                send(`data: ${JSON.stringify({ choices: [{ delta: { content: memoryReply } }] })}\n\n`);
+                return;
+              }
               const analysis = analyzeRequest(lastText);
               emit(lastHasMedia ? "analyzing_files" : analysis.items || analysis.complex ? "analyzing_requirements" : "understanding_request", analysis.items ? `${analysis.items.count} ${analysis.items.noun}${analysis.items.count === 1 ? "" : "s"} requested` : undefined);
               await runSearch((stage, msg) => emit(stage, msg));
@@ -412,6 +390,7 @@ export const Route = createFileRoute("/api/chat")({
               emit("finalizing");
               const answer = best.issues ? `${checkedText}\n\n> [!NOTE]\n> Verification note: after ${attempt} attempt${attempt === 1 ? "" : "s"} these checks still fail: ${best.list.slice(0, 3).map((i) => i.message).join(" ")}` : checkedText;
               await saveReply(caller.user.id, chatId, taskId, answer, { executionMode: task.executionMode, output: task.output });
+              finishAutoMemory();
               outcome = { status: "completed" };
               await gen?.finish("completed");
               console.log("[chat:task]", JSON.stringify({ user: caller.user.id, taskId, model: usedModel, attempts: attempt, unresolved: best.issues, search: searchUsed }));

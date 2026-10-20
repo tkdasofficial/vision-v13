@@ -107,6 +107,7 @@ const UPDATE_RE = /^\s*(?:please\s+)?(?:update\s+(?:your\s+|my\s+)?memory(?:\s+t
 export function detectMemoryCommand(text: string): MemoryCommand {
   const t = text.trim().replace(/’/g, "'").replace(/\b(?:remeber|rember|rememeber)\b/gi, "remember").replace(/\bmemm?ory\b/gi, "memory");
   if (!t) return { action: "none" };
+  if (/\b(?:only (?:in|for) (?:this|the current) (?:chat|conversation)|(?:in|for) this (?:chat|conversation) only)\b/i.test(t)) return { action: "none" };
   if (/^(?:please\s+)?(?:(?:turn|switch)\s+(?:my |your )?memory\s+(?:back )?on|enable memory|resume remembering(?: things)?)[.!]?$/i.test(t)) return { action: "enable" };
   if (/^(?:please\s+)?(?:(?:turn|switch)\s+(?:my |your )?memory\s+off|disable memory|stop remembering(?: things)?|don't remember (?:anything|things)(?: anymore)?)[.!]?$/i.test(t)) return { action: "disable" };
   if (/^(?:please\s+)?(?:remember (?:this|that)|save (?:this|that) to memory|keep (?:this|that) in mind)[.!]?$/i.test(t)) return { action: "save_context" };
@@ -183,7 +184,7 @@ export function detectAutoMemory(text: string): string | null {
   if (!t || t.length > 300 || /\?\s*$/.test(t)) return null;
   if (memoryPrivacy(t) !== "safe" || /["“”`]|\b(?:today|tonight|tomorrow|this week|temporarily|for now|don't|do not|no longer)\b/i.test(t)) return null;
   if (/\b(if|imagine|pretend|suppose|story|character|role-?play|write|example)\b/i.test(t)) return null;
-  const m = t.match(AUTO_RE) ?? t.match(/\b(i(?:'m| am) (?:working on|building)|my (?:long-term goal|project|tech stack) is)\s+([^.!?\n,;]{2,100})/i);
+  const m = t.match(AUTO_RE) ?? t.match(/\b(i(?:'m| am) (?:working on|building)|my (?:long-term goal|project|tech stack) is)\s+([^.!?\n,;]{2,100})/i) ?? t.match(/^(please always|from now on|always|never)\s+([^.!?\n;]{2,140})[.!]?$/i);
   if (!m) return null;
   const fact = `${m[1]} ${m[2].trim()}`.replace(/\s+/g, " ");
   return fact.charAt(0).toUpperCase() + fact.slice(1);

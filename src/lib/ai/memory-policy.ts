@@ -1,6 +1,4 @@
 // Browser-safe privacy and command policy; no model call can authorize a mutation.
-import type { PermanentMemory } from "./memory";
-
 export type MemoryCategory = "preference" | "profile" | "project" | "instruction" | "context";
 export function memoryCategory(text: string): MemoryCategory {
   if (/\b(?:always|never|from now on)\b/i.test(text)) return "instruction";
@@ -28,12 +26,4 @@ export function userMemoryTarget(history: MemoryTurn[]): ContextTarget {
   const last = [...history].reverse().find((m) => m.role === "user" && m.content.trim());
   if (!last || last.content.length > 500 || /[?]|```|\b(?:write|create|imagine|pretend|remember|forget|memory)\b/i.test(last.content)) return { kind: "clarify" };
   return { kind: "found", content: last.content.trim() };
-}
-
-export function correctionTarget(text: string, existing: PermanentMemory[]): string | null {
-  const m = text.match(/^(?:actually[, ]+|that has changed[, :—-]+|correction[: ,]+)(.+)$/i);
-  if (!m) return null;
-  const c = m[1].trim();
-  // A correction needs its own fact/subject; "that has changed" alone never chooses a row.
-  return /\b(?:my .+ is|i (?:live in|prefer|work at|work as)|call me)\b/i.test(c) && existing.length ? c : null;
 }

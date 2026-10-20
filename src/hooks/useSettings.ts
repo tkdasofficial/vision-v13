@@ -41,12 +41,25 @@ export function useSettings() {
     const next = parsePrefs({ ...prefs, ...patch });
     setPrefs(next); applyPrefs(next);
     setSaving(true);
-    const { error } = await supabase.from("user_settings")
-      .update({ prefs: JSON.stringify(next), updated_at: new Date().toISOString() }).eq("user_id", user.id);
+    let error: unknown = null;
+    let confirmed = next;
+    if (Object.keys(patch).every((key) => key === "savedMemories" || key === "chatHistory")) {
+      try {
+        const res = await fetch("/api/memories", { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ switches: patch }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Couldn't save memory settings.");
+        confirmed = parsePrefs(data.prefs);
+        setPrefs(confirmed); applyPrefs(confirmed);
+      } catch (e) { error = e; }
+    } else {
+      const result = await supabase.from("user_settings")
+        .update({ prefs: JSON.stringify(next), updated_at: new Date().toISOString() }).eq("user_id", user.id);
+      error = result.error;
+    }
     setSaving(false);
     if (error) { setPrefs(prev); applyPrefs(prev); toast.error("Couldn't save. Please try again."); return false; }
-    cachePrefs(next);
-    window.dispatchEvent(new CustomEvent("vision:prefs", { detail: next }));
+    cachePrefs(confirmed);
+    window.dispatchEvent(new CustomEvent("vision:prefs", { detail: confirmed }));
     if (!opts.quiet) toast.success("Saved");
     return true;
   }, [user, prefs]);
