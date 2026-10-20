@@ -229,7 +229,8 @@ describe("checkpointed semantic story quality", () => {
   }
   it("repairs only the conflicting scene, rechecks all dependencies and delivers five scenes", async () => {
     const s = qualityScript();
-    const job = new JobRun("job-quality", "user-1", "origin-chat");
+    const job = new JobRun("job-quality", "user-1");
+    job.sessionId = "origin-chat";
     let result = "yield";
     for (let n = 0; n < 30 && result === "yield"; n++) result = await runCloudStoryJob(job, request, { call: s.call, maxCalls: 1 });
     expect(result).toBe("done");
